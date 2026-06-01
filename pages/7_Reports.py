@@ -8,11 +8,12 @@ from services.report_service import (
     get_trial_balance, get_profit_loss, get_short_payments,
     get_excess_payments, get_outstanding_agewise, update_short_excess_status,
 )
-from utils.formatting import fmt_currency, fmt_date, fmt_month, TALLY_CSS
+from utils.formatting import fmt_currency, fmt_date, fmt_month, TALLY_CSS, fkey_bar, keyboard_shortcuts
 
 st.set_page_config(page_title="Reports — Vaishnavi", layout="wide")
 st.markdown(TALLY_CSS, unsafe_allow_html=True)
-st.markdown('<div class="tally-header">📊 Reports & Statements</div>', unsafe_allow_html=True)
+keyboard_shortcuts()
+st.markdown('<div class="tally-titlebar">📊 &nbsp;REPORTS & STATEMENTS<span>F12 · Display</span></div>', unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "⚖️ Trial Balance",
@@ -195,3 +196,5 @@ with tab5:
         st.metric("Grand Total Outstanding", fmt_currency(grand_total))
     else:
         st.success("No outstanding invoices.")
+
+fkey_bar()

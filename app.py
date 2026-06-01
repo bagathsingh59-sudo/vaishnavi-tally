@@ -1,6 +1,5 @@
 import sys
 import os
-
 sys.path.insert(0, os.path.dirname(__file__))
 
 import streamlit as st
@@ -10,41 +9,60 @@ from datetime import datetime
 
 from database import ensure_indexes
 from services.report_service import get_dashboard_stats
-from utils.formatting import fmt_currency, fmt_date, TALLY_CSS
+from utils.formatting import fmt_currency, fmt_date, TALLY_CSS, fkey_bar, keyboard_shortcuts
 
 st.set_page_config(
-    page_title="Vaishnavi Consultants",
+    page_title="Vaishnavi Consultants — Tally",
     page_icon="💼",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 st.markdown(TALLY_CSS, unsafe_allow_html=True)
+keyboard_shortcuts()
 
-# Indexes are best-effort — do NOT let a missing DB crash the process before
-# Streamlit's HTTP server even binds to its port.
 try:
     ensure_indexes()
 except Exception:
     pass
 
-# ── Header ────────────────────────────────────────────────────────────────────
 try:
     firm = st.secrets.get("FIRM_NAME", os.getenv("FIRM_NAME", "Vaishnavi Consultants"))
 except Exception:
     firm = os.getenv("FIRM_NAME", "Vaishnavi Consultants")
+
+# ── Title bar ─────────────────────────────────────────────────────────────────
 st.markdown(
-    f'<div class="tally-header">💼 {firm} — Workstation &nbsp;|&nbsp; '
-    f'{datetime.today().strftime("%d %b %Y")}</div>',
+    f'<div class="tally-titlebar">'
+    f'💼 &nbsp;{firm.upper()} &nbsp;—&nbsp; GATEWAY OF TALLY'
+    f'<span>📅 {datetime.today().strftime("%d-%b-%Y")} &nbsp;|&nbsp; '
+    f'Financial Year: Apr {datetime.today().year if datetime.today().month >= 4 else datetime.today().year-1}'
+    f'–{str(datetime.today().year + 1 if datetime.today().month >= 4 else datetime.today().year)[2:]}'
+    f'</span>'
+    f'</div>',
     unsafe_allow_html=True,
 )
 
-# ── Sidebar navigation hint ───────────────────────────────────────────────────
-st.sidebar.markdown("## Navigation")
-st.sidebar.info("Use the pages in the sidebar to navigate between modules.")
+# ── Sidebar navigation ─────────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("### 🏠 GATEWAY OF TALLY")
+    st.markdown("---")
+    st.markdown("**ACCOUNTING VOUCHERS**")
+    st.page_link("pages/3_Receipts.py",  label="F6  Receipt",  icon="💰")
+    st.page_link("pages/4_Payments.py",  label="F5  Payment",  icon="💸")
+    st.page_link("pages/5_Journal.py",   label="F7  Journal",  icon="📓")
+    st.page_link("pages/2_Invoices.py",  label="F3  Invoice",  icon="🧾")
+    st.markdown("---")
+    st.markdown("**MASTER DATA**")
+    st.page_link("pages/1_Clients.py",   label="F2  Clients",  icon="👥")
+    st.page_link("pages/6_Ledgers.py",   label="F9  Ledgers",  icon="📒")
+    st.markdown("---")
+    st.markdown("**DISPLAY / REPORTS**")
+    st.page_link("pages/7_Reports.py",   label="F12 Reports",  icon="📊")
 
-# ── Dashboard stats ───────────────────────────────────────────────────────────
-st.subheader("Dashboard")
+# ── Dashboard ─────────────────────────────────────────────────────────────────
+st.markdown('<div class="tally-section">📊 CURRENT STATUS</div>', unsafe_allow_html=True)
+
 try:
     stats = get_dashboard_stats()
 except Exception as e:
@@ -53,7 +71,7 @@ except Exception as e:
 **To fix this, add your MongoDB Atlas URI in Streamlit Cloud secrets:**
 
 1. Go to your app → **⋮ menu → Settings → Secrets**
-2. Paste the following (replace the URI with your Atlas connection string):
+2. Paste the following:
 
 ```toml
 ENV = "production"
@@ -63,67 +81,92 @@ MONGO_URI_PROD = "mongodb+srv://<user>:<password>@cluster.mongodb.net/"
 ```
 
 3. Click **Save** — the app will reboot automatically.
-
-> Get a free Atlas cluster at [cloud.mongodb.com](https://cloud.mongodb.com)
 """)
     with st.expander("Technical error details"):
         st.code(str(e))
+    fkey_bar()
     st.stop()
 
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total Outstanding", fmt_currency(stats["total_outstanding"]))
-col2.metric("This Month Collections", fmt_currency(stats["month_receipts"]))
-col3.metric("Bank Balance", fmt_currency(stats["bank_balance"]))
-col4.metric("Cash in Hand", fmt_currency(stats["cash_balance"]))
+# ── Metrics row ───────────────────────────────────────────────────────────────
+c1, c2, c3, c4, c5, c6 = st.columns(6)
+c1.metric("Outstanding",        fmt_currency(stats["total_outstanding"]))
+c2.metric("This Month Receipts",fmt_currency(stats["month_receipts"]))
+c3.metric("Bank Balance",       fmt_currency(stats["bank_balance"]))
+c4.metric("Cash in Hand",       fmt_currency(stats["cash_balance"]))
+c5.metric("Short Pending",      fmt_currency(stats["short_pending_amount"]),
+          delta=f"{stats['short_pending_count']} parties", delta_color="inverse")
+c6.metric("Excess Held",        fmt_currency(stats["excess_held"]))
 
-col5, col6 = st.columns(2)
-col5.metric(
-    "Short Payments Pending",
-    fmt_currency(stats["short_pending_amount"]),
-    delta=f"{stats['short_pending_count']} clients",
-    delta_color="inverse",
-)
-col6.metric("Excess Held", fmt_currency(stats["excess_held"]), delta_color="normal")
+st.markdown("---")
 
-st.divider()
+# ── Gateway quick-action cards ────────────────────────────────────────────────
+st.markdown('<div class="tally-section">⚡ QUICK ACTIONS</div>', unsafe_allow_html=True)
 
-# ── Monthly collections chart ─────────────────────────────────────────────────
-col_chart, col_recent = st.columns([1.4, 1])
+qa1, qa2, qa3, qa4 = st.columns(4)
+with qa1:
+    st.markdown('<div class="tally-box"><b>F6 — Receipt Voucher</b><br>'
+                '<small>Record payment from client</small></div>', unsafe_allow_html=True)
+    if st.button("Enter Receipt →", key="qa_rcpt"):
+        st.switch_page("pages/3_Receipts.py")
+
+with qa2:
+    st.markdown('<div class="tally-box"><b>F5 — Payment Voucher</b><br>'
+                '<small>EPF / ESIC / Expense</small></div>', unsafe_allow_html=True)
+    if st.button("Enter Payment →", key="qa_pay"):
+        st.switch_page("pages/4_Payments.py")
+
+with qa3:
+    st.markdown('<div class="tally-box"><b>F3 — New Invoice</b><br>'
+                '<small>Raise invoice for client</small></div>', unsafe_allow_html=True)
+    if st.button("New Invoice →", key="qa_inv"):
+        st.switch_page("pages/2_Invoices.py")
+
+with qa4:
+    st.markdown('<div class="tally-box"><b>F12 — Reports</b><br>'
+                '<small>Trial Balance / P&L</small></div>', unsafe_allow_html=True)
+    if st.button("View Reports →", key="qa_rep"):
+        st.switch_page("pages/7_Reports.py")
+
+st.markdown("---")
+
+# ── Charts + Recent ───────────────────────────────────────────────────────────
+col_chart, col_recent = st.columns([1.6, 1])
 
 with col_chart:
-    st.markdown("**Monthly Collections (₹)**")
+    st.markdown('<div class="tally-section">📈 MONTHLY COLLECTIONS (₹)</div>', unsafe_allow_html=True)
     chart_data = stats.get("monthly_chart", [])
     if chart_data:
-        months = [d["_id"] for d in chart_data]
+        months  = [d["_id"] for d in chart_data]
         amounts = [d["total"] for d in chart_data]
-        fig = go.Figure(
-            go.Bar(
-                x=months,
-                y=amounts,
-                marker_color="#003366",
-                text=[fmt_currency(a) for a in amounts],
-                textposition="outside",
-            )
-        )
+        fig = go.Figure(go.Bar(
+            x=months, y=amounts,
+            marker_color="#002B5C",
+            text=[fmt_currency(a) for a in amounts],
+            textposition="outside",
+            textfont=dict(color="#002B5C", size=11),
+        ))
         fig.update_layout(
-            height=300,
-            margin=dict(l=0, r=0, t=10, b=0),
-            yaxis=dict(showgrid=True, gridcolor="#eee"),
-            plot_bgcolor="white",
+            height=280, margin=dict(l=0, r=0, t=10, b=0),
+            paper_bgcolor="#F0F0EC", plot_bgcolor="#FFFFFF",
+            yaxis=dict(showgrid=True, gridcolor="#DDDDDD"),
+            xaxis=dict(showgrid=False),
         )
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No collection data yet. Add receipts to see the chart.")
 
 with col_recent:
-    st.markdown("**Recent Transactions**")
+    st.markdown('<div class="tally-section">🕐 RECENT TRANSACTIONS</div>', unsafe_allow_html=True)
     recent = stats.get("recent_vouchers", [])
     if recent:
         df = pd.DataFrame(recent)
-        df["date"] = df["date"].apply(fmt_date)
+        df["date"]   = df["date"].apply(fmt_date)
         df["amount"] = df["amount"].apply(fmt_currency)
+        df["type"]   = df["type"].str.upper()
         df = df[["date", "voucher_no", "type", "client", "amount"]]
-        df.columns = ["Date", "Voucher", "Type", "Client", "Amount"]
-        st.dataframe(df, use_container_width=True, hide_index=True, height=300)
+        df.columns = ["Date", "Voucher", "Type", "Party", "Amount"]
+        st.dataframe(df, use_container_width=True, hide_index=True, height=280)
     else:
         st.info("No transactions yet.")
+
+fkey_bar()

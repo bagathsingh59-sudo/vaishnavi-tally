@@ -6,11 +6,12 @@ import pandas as pd
 from datetime import datetime, date
 from services.ledger_service import get_all_ledgers
 from services.voucher_service import create_journal, get_vouchers
-from utils.formatting import fmt_currency, fmt_date, TALLY_CSS
+from utils.formatting import fmt_currency, fmt_date, TALLY_CSS, fkey_bar, keyboard_shortcuts
 
 st.set_page_config(page_title="Journal — Vaishnavi", layout="wide")
 st.markdown(TALLY_CSS, unsafe_allow_html=True)
-st.markdown('<div class="tally-header">📓 Journal Voucher</div>', unsafe_allow_html=True)
+keyboard_shortcuts()
+st.markdown('<div class="tally-titlebar">📓 &nbsp;JOURNAL VOUCHER<span>F7 · Accounting Vouchers</span></div>', unsafe_allow_html=True)
 
 tab1, tab2 = st.tabs(["➕ New Journal Entry", "📋 Journal List"])
 

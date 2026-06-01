@@ -6,11 +6,12 @@ import pandas as pd
 from datetime import datetime, date
 from services.client_service import get_all_clients
 from services.invoice_service import create_invoice, get_invoices, get_invoice
-from utils.formatting import fmt_currency, fmt_date, fmt_month, TALLY_CSS
+from utils.formatting import fmt_currency, fmt_date, fmt_month, TALLY_CSS, fkey_bar, keyboard_shortcuts
 
 st.set_page_config(page_title="Invoices — Vaishnavi", layout="wide")
 st.markdown(TALLY_CSS, unsafe_allow_html=True)
-st.markdown('<div class="tally-header">🧾 Invoice Management</div>', unsafe_allow_html=True)
+keyboard_shortcuts()
+st.markdown('<div class="tally-titlebar">🧾 &nbsp;INVOICE / SALES VOUCHER<span>F3 · Invoice Entry</span></div>', unsafe_allow_html=True)
 
 tab1, tab2 = st.tabs(["📋 Invoice List", "➕ New Invoice"])
 

@@ -6,11 +6,12 @@ import pandas as pd
 from datetime import datetime, date
 from services.ledger_service import get_bank_ledgers, get_cash_ledgers, get_all_ledgers
 from services.voucher_service import create_payment, get_vouchers
-from utils.formatting import fmt_currency, fmt_date, TALLY_CSS
+from utils.formatting import fmt_currency, fmt_date, TALLY_CSS, fkey_bar, keyboard_shortcuts
 
 st.set_page_config(page_title="Payments — Vaishnavi", layout="wide")
 st.markdown(TALLY_CSS, unsafe_allow_html=True)
-st.markdown('<div class="tally-header">💸 Payment Vouchers</div>', unsafe_allow_html=True)
+keyboard_shortcuts()
+st.markdown('<div class="tally-titlebar">💸 &nbsp;PAYMENT VOUCHER<span>F5 · Accounting Vouchers</span></div>', unsafe_allow_html=True)
 
 tab1, tab2 = st.tabs(["➕ New Payment", "📋 Payment List"])
 
@@ -97,3 +98,5 @@ with tab2:
             sum(e.get("credit", 0) for e in v.get("entries", [])) for v in vouchers
         )
         st.markdown(f"**Total Payments: {fmt_currency(total_pay)}**")
+
+fkey_bar()

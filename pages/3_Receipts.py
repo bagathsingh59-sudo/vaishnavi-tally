@@ -8,11 +8,12 @@ from services.client_service import get_all_clients
 from services.ledger_service import get_bank_ledgers, get_cash_ledgers
 from services.invoice_service import get_unpaid_invoices_for_client
 from services.voucher_service import create_receipt, get_vouchers
-from utils.formatting import fmt_currency, fmt_date, fmt_month, TALLY_CSS
+from utils.formatting import fmt_currency, fmt_date, fmt_month, TALLY_CSS, fkey_bar, keyboard_shortcuts
 
 st.set_page_config(page_title="Receipts — Vaishnavi", layout="wide")
 st.markdown(TALLY_CSS, unsafe_allow_html=True)
-st.markdown('<div class="tally-header">💰 Receipt Vouchers</div>', unsafe_allow_html=True)
+keyboard_shortcuts()
+st.markdown('<div class="tally-titlebar">💰 &nbsp;RECEIPT VOUCHER<span>F6 · Accounting Vouchers</span></div>', unsafe_allow_html=True)
 
 tab1, tab2 = st.tabs(["➕ New Receipt", "📋 Receipt List"])
 
@@ -147,3 +148,5 @@ with tab2:
             sum(e.get("debit", 0) for e in v.get("entries", [])) for v in vouchers
         )
         st.markdown(f"**Total Receipts: {fmt_currency(total_rcpt)}**")
+
+fkey_bar()
