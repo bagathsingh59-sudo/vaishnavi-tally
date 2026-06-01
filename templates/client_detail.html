@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block heading %}— CLIENT LEDGER{% endblock %}
+{% block content %}
+
+<div class="cards">
+  <div class="card"><div class="lbl">{{ c.name }}</div>
+    <div class="sub">{{ c.contact_person }} | {{ c.phone }}</div>
+    <div class="sub">EPF: {{ c.epf_account_no }} | ESIC: {{ c.esic_account_no }}</div></div>
+  <div class="card"><div class="lbl">Outstanding Balance</div>
+    <div class="val">{{ outstanding|abs|inr }}</div>
+    <div class="sub">{{ 'Dr (Receivable)' if outstanding>=0 else 'Cr (Excess held)' }}</div></div>
+</div>
+
+<details>
+  <summary>✏️ Edit Client Details</summary>
+  <form class="panel" method="post" action="/clients/{{ c.id }}/edit">
+    <div class="form-row">
+      <div class="field"><label>Name</label><input name="name" value="{{ c.name }}"></div>
+      <div class="field"><label>Contact</label><input name="contact_person" value="{{ c.contact_person }}"></div>
+      <div class="field"><label>Phone</label><input name="phone" value="{{ c.phone }}"></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>EPF No</label><input name="epf_account_no" value="{{ c.epf_account_no }}"></div>
+      <div class="field"><label>ESIC No</label><input name="esic_account_no" value="{{ c.esic_account_no }}"></div>
+      <div class="field"><label>Address</label><input name="address" value="{{ c.address }}"></div>
+    </div>
+    <button class="btn primary" type="submit">Update</button>
+  </form>
+</details>
+
+<div class="section">📒 Ledger Statement</div>
+<table class="tbl">
+  <thead><tr><th>Date</th><th>Voucher</th><th>Type</th><th>Narration</th>
+    <th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead>
+  <tbody>
+  {% for t in txns %}
+    <tr><td>{{ t.date|date }}</td><td>{{ t.voucher_no }}</td><td>{{ t.voucher_type|vtype }}</td>
+      <td>{{ t.narration }}</td>
+      <td class="num">{{ t.debit|inr if t.debit else '' }}</td>
+      <td class="num">{{ t.credit|inr if t.credit else '' }}</td>
+      <td class="num">{{ t.balance|inr }} {{ t.balance_type }}</td></tr>
+  {% else %}<tr><td colspan="7" class="muted">No transactions.</td></tr>{% endfor %}
+    <tr class="totalrow"><td colspan="6">Closing Balance</td>
+      <td class="num">{{ closing|abs|inr }} {{ 'Dr' if closing>=0 else 'Cr' }}</td></tr>
+  </tbody>
+</table>
+
+{% if shorts or excess %}
+<div class="section">🔴 Short / 🟢 Excess History</div>
+<table class="tbl">
+  <thead><tr><th>Type</th><th>Month</th><th class="num">Amount</th><th>Status</th></tr></thead>
+  <tbody>
+    {% for s in shorts %}<tr><td><span class="badge short">SHORT</span></td>
+      <td>{{ s.billing_month|month }}</td><td class="num">{{ s.difference|inr }}</td>
+      <td>{{ s.status|upper }}</td></tr>{% endfor %}
+    {% for e in excess %}<tr><td><span class="badge excess">EXCESS</span></td>
+      <td>{{ e.billing_month|month }}</td><td class="num">{{ e.difference|inr }}</td>
+      <td>{{ e.status|upper }}</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<p style="margin-top:14px"><a class="btn ghost" href="/clients">← Back to Clients</a></p>
+{% endblock %}

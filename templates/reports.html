@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block heading %}— REPORTS (F12){% endblock %}
+{% block content %}
+
+<div class="tabs">
+  <a href="/reports?tab=trial"   class="{{ 'active' if tab=='trial' }}">⚖️ Trial Balance</a>
+  <a href="/reports?tab=pl"      class="{{ 'active' if tab=='pl' }}">📈 Profit & Loss</a>
+  <a href="/reports?tab=short"   class="{{ 'active' if tab=='short' }}">🔴 Short Payments</a>
+  <a href="/reports?tab=excess"  class="{{ 'active' if tab=='excess' }}">🟢 Excess Payments</a>
+  <a href="/reports?tab=agewise" class="{{ 'active' if tab=='agewise' }}">📅 Age-wise</a>
+</div>
+
+{% if tab=='trial' %}
+  <form method="get" style="margin:10px 0">
+    <input type="hidden" name="tab" value="trial">
+    As on: <input type="date" name="as_of" value="{{ as_of }}">
+    <button class="btn sm" type="submit">Show</button>
+  </form>
+  <table class="tbl">
+    <thead><tr><th>Ledger</th><th>Group</th><th class="num">Closing Dr</th><th class="num">Closing Cr</th></tr></thead>
+    <tbody>
+    {% for r in tb %}
+      <tr><td>{{ r.ledger_name }}</td><td>{{ r.group }}</td>
+        <td class="num">{{ r.closing_dr|inr if r.closing_dr else '' }}</td>
+        <td class="num">{{ r.closing_cr|inr if r.closing_cr else '' }}</td></tr>
+    {% endfor %}
+      <tr class="totalrow"><td colspan="2">TOTAL</td>
+        <td class="num">{{ total_dr|inr }}</td><td class="num">{{ total_cr|inr }}</td></tr>
+    </tbody>
+  </table>
+  {% if (total_dr-total_cr)|abs < 1 %}
+    <p class="flash success">✓ Balanced — Difference: {{ (total_dr-total_cr)|abs|inr }}</p>
+  {% else %}<p class="flash error">⚠️ Out of balance by {{ (total_dr-total_cr)|abs|inr }}</p>{% endif %}
+
+{% elif tab=='pl' %}
+  <form method="get" style="margin:10px 0">
+    <input type="hidden" name="tab" value="pl">
+    From: <input type="date" name="from" value="{{ pf }}">
+    To: <input type="date" name="to" value="{{ pt }}">
+    <button class="btn sm" type="submit">Show</button>
+  </form>
+  <div class="grid2">
+    <div><div class="section">Income</div>
+      <table class="tbl"><tbody>
+        {% for i in pl.income %}<tr><td>{{ i.name }}</td><td class="num">{{ i.amount|inr }}</td></tr>{% endfor %}
+        <tr class="totalrow"><td>Total Income</td><td class="num">{{ pl.total_income|inr }}</td></tr>
+      </tbody></table></div>
+    <div><div class="section">Expenses</div>
+      <table class="tbl"><tbody>
+        {% for e in pl.expenses %}<tr><td>{{ e.name }}</td><td class="num">{{ e.amount|inr }}</td></tr>{% endfor %}
+        <tr class="totalrow"><td>Total Expenses</td><td class="num">{{ pl.total_expense|inr }}</td></tr>
+      </tbody></table></div>
+  </div>
+  {% if pl.net_profit>=0 %}
+    <p class="flash success" style="font-size:16px">Net Profit: {{ pl.net_profit|inr }}</p>
+  {% else %}<p class="flash error" style="font-size:16px">Net Loss: {{ pl.net_profit|abs|inr }}</p>{% endif %}
+
+{% elif tab in ['short','excess'] %}
+  {% set rows = shorts if tab=='short' else excess %}
+  <div class="section">{{ 'Short' if tab=='short' else 'Excess' }} Payment Ledger</div>
+  <table class="tbl">
+    <thead><tr><th>Date</th><th>Client</th><th>Month</th><th class="num">Invoiced</th>
+      <th class="num">Received</th><th class="num">{{ 'Short By' if tab=='short' else 'Excess' }}</th>
+      <th>Status</th><th>Update</th></tr></thead>
+    <tbody>
+    {% for s in rows %}
+      <tr><td>{{ s.date|date }}</td><td>{{ s.client_name }}</td><td>{{ s.billing_month|month }}</td>
+        <td class="num">{{ s.invoiced_amount|inr }}</td><td class="num">{{ s.received_amount|inr }}</td>
+        <td class="num">{{ s.difference|inr }}</td><td>{{ s.status|upper }}</td>
+        <td><form class="inline-form" method="post" action="/reports/se/{{ s.id }}/status">
+          <input type="hidden" name="tab" value="{{ tab }}">
+          <select name="status">
+            {% for opt in (['pending','recovered','written_off'] if tab=='short' else ['pending','adjusted','refunded']) %}
+              <option {{ 'selected' if s.status==opt }}>{{ opt }}</option>{% endfor %}</select>
+          <button class="btn sm" type="submit">Save</button></form></td></tr>
+    {% else %}<tr><td colspan="8" class="muted">None found.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  <p class="flash success">Total {{ 'Short' if tab=='short' else 'Excess' }} (pending): {{ total|inr }}</p>
+
+{% elif tab=='agewise' %}
+  <div class="section">Age-wise Outstanding</div>
+  <table class="tbl">
+    <thead><tr><th>Client</th><th class="num">0–30</th><th class="num">31–60</th>
+      <th class="num">61–90</th><th class="num">90+</th><th class="num">Total</th></tr></thead>
+    <tbody>
+    {% for a in agewise %}
+      <tr><td>{{ a.client_name }}</td><td class="num">{{ a['0_30']|inr }}</td>
+        <td class="num">{{ a['31_60']|inr }}</td><td class="num">{{ a['61_90']|inr }}</td>
+        <td class="num">{{ a['above_90']|inr }}</td><td class="num">{{ a.total|inr }}</td></tr>
+    {% else %}<tr><td colspan="6" class="muted">No outstanding invoices.</td></tr>{% endfor %}
+      <tr class="totalrow"><td colspan="5">Grand Total</td><td class="num">{{ grand|inr }}</td></tr>
+    </tbody>
+  </table>
+{% endif %}
+{% endblock %}

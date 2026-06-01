@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block heading %}— SETTINGS / DATA MANAGEMENT{% endblock %}
+{% block content %}
+
+<div class="section">📊 Current Data</div>
+<div class="cards">
+  <div class="card"><div class="lbl">Clients</div><div class="val">{{ counts.clients }}</div></div>
+  <div class="card"><div class="lbl">Ledgers</div><div class="val">{{ counts.ledgers }}</div></div>
+  <div class="card"><div class="lbl">Vouchers</div><div class="val">{{ counts.vouchers }}</div></div>
+  <div class="card"><div class="lbl">Short / Excess</div><div class="val">{{ counts.short_excess }}</div></div>
+</div>
+
+<div class="section">🧹 Option 1 — Clear Transactions Only</div>
+<div class="panel">
+  <p>Deletes all <b>vouchers</b> (Receipts, Payments, Journals), short/excess records and
+     resets voucher numbering. <b>Keeps your Clients and Ledgers.</b> Recommended for starting fresh.</p>
+  <form method="post" action="/settings/reset-transactions"
+        onsubmit="return confirm('Clear all transactions? Clients and Ledgers will be kept.')">
+    <div class="form-row">
+      <div class="field"><label>Type <b>RESET TRANSACTIONS</b> to confirm</label>
+        <input name="confirm" placeholder="RESET TRANSACTIONS"></div>
+    </div>
+    <button class="btn danger" type="submit">🧹 Clear All Transactions</button>
+  </form>
+</div>
+
+<div class="section">🔴 Option 2 — Full Reset (Everything)</div>
+<div class="panel" style="border-top-color:#C0392B">
+  <p style="color:#C0392B">⚠️ Deletes <b>everything</b> — Clients, Ledgers, Vouchers, Short/Excess.
+     The database will be completely empty. Cannot be undone.</p>
+  <form method="post" action="/settings/reset-all"
+        onsubmit="return confirm('DELETE EVERYTHING? This cannot be undone.')">
+    <div class="form-row">
+      <div class="field"><label>Type <b>DELETE EVERYTHING</b> to confirm</label>
+        <input name="confirm" placeholder="DELETE EVERYTHING"></div>
+    </div>
+    <button class="btn danger" type="submit">🔴 Wipe Entire Database</button>
+  </form>
+</div>
+
+<p class="muted">💡 After clearing, set up your Bank/Cash ledger (F9) and Client (F2) first,
+   then start entering vouchers.</p>
+{% endblock %}

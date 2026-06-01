@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ FIRM_NAME }}{% endblock %} — Tally</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tally.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+<div class="app">
+  <nav class="sidebar">
+    <h1>🏠 GATEWAY</h1>
+    <div class="grp">Gateway</div>
+    <a href="/"          class="{{ 'active' if request.path=='/' }}">📊 Dashboard</a>
+    <div class="grp">Accounting Vouchers</div>
+    <a href="/receipts"  class="{{ 'active' if request.path.startswith('/receipts') }}">💰 Receipt <small>(F6)</small></a>
+    <a href="/payments"  class="{{ 'active' if request.path.startswith('/payments') }}">💸 Payment <small>(F5)</small></a>
+    <a href="/journal"   class="{{ 'active' if request.path.startswith('/journal') }}">📓 Journal <small>(F7)</small></a>
+    <div class="grp">Masters</div>
+    <a href="/clients"   class="{{ 'active' if request.path.startswith('/clients') }}">👥 Clients <small>(F2)</small></a>
+    <a href="/ledgers"   class="{{ 'active' if request.path.startswith('/ledgers') }}">📒 Ledgers <small>(F9)</small></a>
+    <div class="grp">Display / Reports</div>
+    <a href="/daybook"   class="{{ 'active' if request.path.startswith('/daybook') }}">📅 Day Book <small>(F8)</small></a>
+    <a href="/reports"   class="{{ 'active' if request.path.startswith('/reports') }}">📈 Reports <small>(F12)</small></a>
+    <div class="grp">Admin</div>
+    <a href="/settings"  class="{{ 'active' if request.path.startswith('/settings') }}">⚙️ Settings</a>
+  </nav>
+
+  <main class="main">
+    <div class="titlebar">
+      <span>💼 {{ FIRM_NAME|upper }} {% block heading %}{% endblock %}</span>
+      <span class="sub">📅 {{ TODAY.strftime('%d-%b-%Y') }} &nbsp;|&nbsp; FY: {{ FY_LABEL }}</span>
+    </div>
+
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in msgs %}
+        <div class="flash {{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="content">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+<div class="fkeybar">
+  <a href="/"><b>F1</b>Dashboard</a>
+  <a href="/clients"><b>F2</b>Clients</a>
+  <a href="/payments"><b>F5</b>Payment</a>
+  <a href="/receipts"><b>F6</b>Receipt</a>
+  <a href="/journal"><b>F7</b>Journal</a>
+  <a href="/daybook"><b>F8</b>Day Book</a>
+  <a href="/ledgers"><b>F9</b>Ledgers</a>
+  <a href="/reports"><b>F12</b>Reports</a>
+  <span class="hint">Ctrl+S: Save &nbsp;|&nbsp; F-keys: Navigate</span>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block heading %}— DASHBOARD{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>{% endblock %}
+{% block content %}
+
+<div class="section">💵 Financial Position</div>
+<div class="cards">
+  <a class="card click" href="/ledgers"><div class="lbl">💰 Total Liquid Funds</div>
+    <div class="val">{{ liquid|inr }}</div><div class="sub">Bank + Cash</div></a>
+  <a class="card click" href="/ledgers"><div class="lbl">🏦 Bank Balance</div>
+    <div class="val">{{ s.bank_balance|inr }}</div></a>
+  <a class="card click" href="/ledgers"><div class="lbl">💵 Cash in Hand</div>
+    <div class="val">{{ s.cash_balance|inr }}</div></a>
+  <a class="card click" href="/reports?tab=agewise"><div class="lbl">📊 Outstanding</div>
+    <div class="val">{{ s.total_outstanding|inr }}</div>
+    <div class="sub">{{ s.short_pending_count }} parties short</div></a>
+</div>
+
+<div class="section">📅 This Month</div>
+<div class="cards">
+  <a class="card click" href="/daybook?type=Receipt"><div class="lbl">⬆️ Receipts (In)</div>
+    <div class="val cr">{{ s.month_receipts|inr }}</div></a>
+  <a class="card click" href="/daybook?type=Payment"><div class="lbl">⬇️ Payments (Out)</div>
+    <div class="val dr">{{ s.month_payments|inr }}</div></a>
+  <div class="card"><div class="lbl">💹 Net Cash Flow</div>
+    <div class="val">{{ (s.month_receipts - s.month_payments)|inr }}</div></div>
+  <a class="card click" href="/reports?tab=short"><div class="lbl">🔴 Short / 🟢 Excess</div>
+    <div class="val" style="font-size:15px">{{ s.short_pending_amount|inr }} / {{ s.excess_held|inr }}</div></a>
+</div>
+
+<div class="grid2">
+  <div>
+    <div class="section">📈 Receipts vs Payments</div>
+    <div class="panel"><canvas id="trendChart" height="130"></canvas></div>
+  </div>
+  <div>
+    <div class="section">🏦 Funds Split</div>
+    <div class="panel"><canvas id="fundsChart" height="130"></canvas></div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div>
+    <div class="section">🕐 Recent Transactions</div>
+    <table class="tbl">
+      <thead><tr><th>Date</th><th>Voucher</th><th>Type</th><th>Party</th><th class="num">Amount</th></tr></thead>
+      <tbody>
+        {% for v in s.recent_vouchers %}
+        <tr><td>{{ v.date|date }}</td><td>{{ v.voucher_no }}</td>
+          <td>{{ v.type|vtype }}</td><td>{{ v.client }}</td>
+          <td class="num">{{ v.amount|inr }}</td></tr>
+        {% else %}<tr><td colspan="5" class="muted">No transactions yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div>
+    <div class="section">⚡ Quick Entry</div>
+    <div class="cards" style="margin-bottom:10px">
+      <div class="card"><div class="lbl">👥 Active Clients</div><div class="val">{{ s.total_clients }}</div></div>
+      <div class="card"><div class="lbl">📑 Total Vouchers</div><div class="val">{{ s.total_vouchers }}</div></div>
+    </div>
+    <a class="btn primary" href="/journal" style="display:block;text-align:center;margin:6px 0">📓 New Journal (F7)</a>
+    <a class="btn" href="/receipts" style="display:block;text-align:center;margin:6px 0">💰 New Receipt (F6)</a>
+    <a class="btn" href="/payments" style="display:block;text-align:center;margin:6px 0">💸 New Payment (F5)</a>
+    <a class="btn ghost" href="/daybook" style="display:block;text-align:center;margin:6px 0">📅 Day Book (F8)</a>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+new Chart(document.getElementById("trendChart"), {
+  type:"bar",
+  data:{ labels:{{ chart.labels|tojson }},
+    datasets:[
+      {label:"Receipts", data:{{ chart.receipts|tojson }}, backgroundColor:"#1E8449"},
+      {label:"Payments", data:{{ chart.payments|tojson }}, backgroundColor:"#C0392B"}
+    ]},
+  options:{plugins:{legend:{position:"top"}}, scales:{y:{beginAtZero:true}}}
+});
+new Chart(document.getElementById("fundsChart"), {
+  type:"doughnut",
+  data:{ labels:["Bank","Cash"],
+    datasets:[{data:[{{ s.bank_balance }}, {{ s.cash_balance }}],
+      backgroundColor:["#002B5C","#FFD700"]}]},
+  options:{plugins:{legend:{position:"bottom"}}}
+});
+</script>
+{% endblock %}

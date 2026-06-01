@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block heading %}— DAY BOOK (F8){% endblock %}
+{% block content %}
+
+<form method="get" action="/daybook" class="panel">
+  <div class="form-row" style="align-items:flex-end">
+    <div class="field" style="max-width:170px"><label>From</label>
+      <input type="date" name="from" value="{{ from_s }}"></div>
+    <div class="field" style="max-width:170px"><label>To</label>
+      <input type="date" name="to" value="{{ to_s }}"></div>
+    <div class="field" style="max-width:170px"><label>Type</label>
+      <select name="type">
+        {% for t in ['All','Receipt','Payment','Journal'] %}
+          <option {{ 'selected' if vtype==t }}>{{ t }}</option>{% endfor %}</select></div>
+    <div class="field" style="max-width:120px"><label>&nbsp;</label>
+      <button class="btn primary" type="submit">View</button></div>
+  </div>
+</form>
+
+<div class="cards">
+  <div class="card"><div class="lbl">Total Receipts</div><div class="val cr">{{ rcpt_total|inr }}</div></div>
+  <div class="card"><div class="lbl">Total Payments</div><div class="val dr">{{ pay_total|inr }}</div></div>
+  <div class="card"><div class="lbl">Net Cash Flow</div><div class="val">{{ (rcpt_total-pay_total)|inr }}</div></div>
+  <div class="card"><div class="lbl">Vouchers</div><div class="val">{{ vouchers|length }}</div></div>
+</div>
+
+<div class="section">📅 Entries</div>
+<table class="tbl">
+  <thead><tr><th>Date</th><th>Voucher</th><th>Type</th><th>Party / Narration</th>
+    <th class="num">Amount</th><th></th></tr></thead>
+  <tbody>
+  {% for v in vouchers %}
+    <tr>
+      <td>{{ v.date|date }}</td><td>{{ v.voucher_no }}</td><td>{{ v.voucher_type|vtype }}</td>
+      <td>{{ v.client_name or v.narration }}</td>
+      <td class="num">{{ v.amount|inr }}</td>
+      <td>
+        <form class="inline-form" method="post" action="/daybook/{{ v.id }}/delete"
+          onsubmit="return confirm('Delete {{ v.voucher_no }}?')">
+          <button class="btn sm danger" type="submit">Delete</button>
+        </form>
+      </td>
+    </tr>
+  {% else %}<tr><td colspan="6" class="muted">No entries for this period.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}

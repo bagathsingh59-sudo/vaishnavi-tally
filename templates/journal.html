@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block heading %}— JOURNAL VOUCHER (F7){% endblock %}
+{% block content %}
+
+<div class="section">➕ New Journal Entry (Double-Entry)</div>
+<form class="panel" method="post" action="/journal/add" data-primary>
+  <div class="form-row">
+    <div class="field" style="max-width:200px"><label>Date *</label>
+      <input type="date" name="date" value="{{ TODAY|dateinput }}"></div>
+  </div>
+  <table class="tbl" id="jrnTable">
+    <thead><tr><th style="width:55%">Particulars (Ledger)</th>
+      <th class="num">Debit (₹)</th><th class="num">Credit (₹)</th><th></th></tr></thead>
+    <tbody>
+      <tr>
+        <td><select name="ledger_id[]">
+          <option value="">— Select —</option>
+          {% for l in ledgers %}<option value="{{ l.id }}">{{ l.name }}</option>{% endfor %}
+        </select></td>
+        <td><input type="number" step="0.01" name="debit[]" class="num" style="width:100%"></td>
+        <td><input type="number" step="0.01" name="credit[]" class="num" style="width:100%"></td>
+        <td><button type="button" class="btn sm danger" onclick="removeRow(this)">✕</button></td>
+      </tr>
+      <tr>
+        <td><select name="ledger_id[]">
+          <option value="">— Select —</option>
+          {% for l in ledgers %}<option value="{{ l.id }}">{{ l.name }}</option>{% endfor %}
+        </select></td>
+        <td><input type="number" step="0.01" name="debit[]" class="num" style="width:100%"></td>
+        <td><input type="number" step="0.01" name="credit[]" class="num" style="width:100%"></td>
+        <td><button type="button" class="btn sm danger" onclick="removeRow(this)">✕</button></td>
+      </tr>
+    </tbody>
+  </table>
+  <p><button type="button" class="btn sm" onclick="addRow('jrnTable')">＋ Add Row</button>
+     <span id="jrn-balance" style="margin-left:14px;font-weight:700"></span></p>
+  <div class="form-row">
+    <div class="field"><label>Narration *</label>
+      <input name="narration" placeholder="e.g. EPF & ESIC for May 2025 — SM Brother Contractor" required></div>
+  </div>
+  {% if not ledgers %}<p class="flash error">Add ledgers first (F9).</p>{% endif %}
+  <button class="btn primary" type="submit">✔ Accept (Ctrl+S)</button>
+</form>
+
+<div class="section">📋 Journal List</div>
+{% for v in vouchers %}
+  <details>
+    <summary>{{ v.voucher_no }} | {{ v.date|date }} | {{ v.narration }} | Dr {{ v.total_dr|inr }}</summary>
+    <table class="tbl">
+      <thead><tr><th>Dr/Cr</th><th>Ledger</th><th class="num">Debit</th><th class="num">Credit</th></tr></thead>
+      <tbody>
+        {% for e in v.entries %}
+        <tr><td>{{ 'By' if e.debit>0 else 'To' }}</td><td>{{ e.ledger_name }}</td>
+          <td class="num">{{ e.debit|inr if e.debit else '' }}</td>
+          <td class="num">{{ e.credit|inr if e.credit else '' }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <form class="inline-form" method="post" action="/journal/{{ v.id }}/delete"
+      onsubmit="return confirm('Delete {{ v.voucher_no }}?')">
+      <button class="btn sm danger" type="submit">Delete this entry</button>
+    </form>
+  </details>
+{% else %}<p class="muted">No journal entries yet.</p>{% endfor %}
+
+{% endblock %}
+{% block scripts %}<script>recalcJournal();</script>{% endblock %}

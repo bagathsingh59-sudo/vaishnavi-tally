@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block heading %}— DASHBOARD{% endblock %}
+{% block content %}
+<div class="panel">
+  <h3 style="color:#C0392B">⚠️ Cannot connect to MongoDB</h3>
+  <p>The database is not configured or unreachable. Check your <code>.env</code> file:</p>
+  <pre style="background:#f5f5f5;padding:12px;border:1px solid #ccc">ENV=production
+DB_NAME=vaishnavi_tally
+MONGO_URI_PROD=mongodb+srv://USER:PASSWORD@cluster.mongodb.net/</pre>
+  <details><summary>Technical error details</summary>
+    <pre style="background:#fee;padding:10px">{{ error }}</pre>
+  </details>
+</div>
+{% endblock %}

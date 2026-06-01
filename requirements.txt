@@ -1,9 +1,5 @@
-streamlit==1.45.0
+Flask==3.0.3
+gunicorn==23.0.0
 pymongo==4.10.0
 python-dotenv==1.0.1
-pandas==2.2.0
-plotly==5.24.0
-openpyxl==3.1.5
 python-dateutil==2.9.0
-# reportlab and pdfplumber added back when PDF print feature is built
-# rebuild trigger: v3 (settings / reset data)

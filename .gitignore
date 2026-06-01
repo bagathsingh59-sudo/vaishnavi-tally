@@ -29,9 +29,6 @@ env/
 Thumbs.db
 desktop.ini
 
-# Streamlit
-.streamlit/secrets.toml
-
 # Logs
 *.log
 logs/
@@ -49,6 +46,3 @@ mongo_data/
 
 # Docker
 *.pid
-
-# Streamlit secrets (never commit real secrets)
-.streamlit/secrets.toml

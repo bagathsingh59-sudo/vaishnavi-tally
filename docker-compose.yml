@@ -3,44 +3,13 @@ version: "3.9"
 services:
   app:
     build: .
-    container_name: vaishnavi_tally_app
+    container_name: vaishnavi_tally
     ports:
-      - "8501:8501"
+      - "8000:8000"
     environment:
-      - ENV=development
+      - ENV=production
       - DB_NAME=vaishnavi_tally
-      - MONGO_URI_DEV=mongodb://mongodb:27017   # overrides .env — uses service name
+      - MONGO_URI_PROD=${MONGO_URI_PROD}
       - FIRM_NAME=Vaishnavi Consultants
-    depends_on:
-      mongodb:
-        condition: service_healthy
-    volumes:
-      - .:/app                                  # live reload during development
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
     restart: unless-stopped
-    networks:
-      - tally_net
-
-  mongodb:
-    image: mongo:7.0
-    container_name: vaishnavi_tally_db
-    ports:
-      - "27017:27017"                           # expose for Compass access
-    volumes:
-      - mongo_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-    networks:
-      - tally_net
-
-volumes:
-  mongo_data:
-    name: vaishnavi_tally_data
-
-networks:
-  tally_net:
-    name: vaishnavi_tally_network

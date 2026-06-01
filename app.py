@@ -1,45 +1,508 @@
-import sys
 import os
-sys.path.insert(0, os.path.dirname(__file__))
+from datetime import datetime, date
 
-import streamlit as st
+from flask import (Flask, render_template, request, redirect, url_for, flash, jsonify)
 
 from database import ensure_indexes
-from utils.formatting import TALLY_CSS, keyboard_shortcuts
+from utils.formatting import fmt_currency, fmt_date, fmt_date_input, fmt_month, voucher_type_label
 
-st.set_page_config(
-    page_title="Vaishnavi Consultants — Tally",
-    page_icon="💼",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+from services import client_service as clients_svc
+from services import ledger_service as ledger_svc
+from services import voucher_service as voucher_svc
+from services import report_service as report_svc
+from services import admin_service as admin_svc
 
-# Inject styling + keyboard shortcuts ONCE for the whole app
-st.markdown(TALLY_CSS, unsafe_allow_html=True)
-keyboard_shortcuts()
+app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "vaishnavi-tally-dev-key-change-me")
+
+# Jinja filters
+app.jinja_env.filters["inr"] = fmt_currency
+app.jinja_env.filters["date"] = fmt_date
+app.jinja_env.filters["dateinput"] = fmt_date_input
+app.jinja_env.filters["month"] = fmt_month
+app.jinja_env.filters["vtype"] = voucher_type_label
 
 try:
     ensure_indexes()
 except Exception:
     pass
 
-# ── Define pages (st.navigation overrides the default pages/ auto-discovery) ────
-dashboard = st.Page("pages/0_Dashboard.py", title="Dashboard", icon="🏠", default=True)
-clients   = st.Page("pages/1_Clients.py",   title="Clients",   icon="👥", url_path="Clients")
-receipts  = st.Page("pages/2_Receipts.py",  title="Receipt",   icon="💰", url_path="Receipts")
-payments  = st.Page("pages/3_Payments.py",  title="Payment",   icon="💸", url_path="Payments")
-journal   = st.Page("pages/4_Journal.py",   title="Journal",   icon="📓", url_path="Journal")
-ledgers   = st.Page("pages/5_Ledgers.py",   title="Ledgers",   icon="📒", url_path="Ledgers")
-reports   = st.Page("pages/6_Reports.py",   title="Reports",   icon="📊", url_path="Reports")
-daybook   = st.Page("pages/7_DayBook.py",   title="Day Book",  icon="📅", url_path="DayBook")
-settings  = st.Page("pages/8_Settings.py",  title="Settings",  icon="⚙️", url_path="Settings")
 
-pg = st.navigation({
-    "Gateway":             [dashboard],
-    "Accounting Vouchers": [receipts, payments, journal],
-    "Masters":             [clients, ledgers],
-    "Display / Reports":   [daybook, reports],
-    "Admin":               [settings],
-})
+@app.context_processor
+def inject_globals():
+    return {
+        "FIRM_NAME": os.getenv("FIRM_NAME", "Vaishnavi Consultants"),
+        "TODAY": datetime.today(),
+        "FY_LABEL": _fy_label(),
+    }
 
-pg.run()
+
+def _fy_label():
+    t = datetime.today()
+    start = t.year if t.month >= 4 else t.year - 1
+    return f"Apr {start}–{str(start + 1)[2:]}"
+
+
+def _parse_date(s, default=None):
+    if not s:
+        return default or datetime.combine(date.today(), datetime.min.time())
+    try:
+        return datetime.combine(datetime.strptime(s, "%Y-%m-%d").date(), datetime.min.time())
+    except ValueError:
+        return default or datetime.combine(date.today(), datetime.min.time())
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DASHBOARD
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.route("/")
+def dashboard():
+    try:
+        stats = report_svc.get_dashboard_stats()
+    except Exception as e:
+        return render_template("db_error.html", error=str(e))
+
+    liquid = stats["bank_balance"] + stats["cash_balance"]
+
+    # Build chart series (months union of receipts & payments)
+    rcpt = {d["_id"]: d["total"] for d in stats.get("monthly_chart", [])}
+    paym = {d["_id"]: d["total"] for d in stats.get("monthly_payments", [])}
+    months = sorted(set(list(rcpt.keys()) + list(paym.keys())))
+    chart = {
+        "labels": [fmt_month(m) for m in months],
+        "receipts": [rcpt.get(m, 0) for m in months],
+        "payments": [paym.get(m, 0) for m in months],
+    }
+    return render_template("dashboard.html", s=stats, liquid=liquid, chart=chart)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CLIENTS
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.route("/clients")
+def clients():
+    q = request.args.get("q", "").strip()
+    show_inactive = request.args.get("inactive") == "1"
+    if q:
+        rows = clients_svc.search_clients(q)
+    else:
+        rows = clients_svc.get_all_clients(active_only=not show_inactive)
+    for c in rows:
+        c["outstanding"] = clients_svc.get_client_outstanding(c["id"])
+    return render_template("clients.html", clients=rows, q=q, show_inactive=show_inactive)
+
+
+@app.route("/clients/add", methods=["POST"])
+def clients_add():
+    f = request.form
+    if not f.get("name", "").strip():
+        flash("Client name is required.", "error")
+        return redirect(url_for("clients"))
+    clients_svc.create_client({
+        "name": f["name"], "contact_person": f.get("contact_person", ""),
+        "phone": f.get("phone", ""), "email": f.get("email", ""),
+        "address": f.get("address", ""), "epf_account_no": f.get("epf_account_no", ""),
+        "esic_account_no": f.get("esic_account_no", ""),
+        "opening_balance": f.get("opening_balance", 0) or 0,
+        "opening_balance_type": f.get("opening_balance_type", "dr"),
+    })
+    flash(f"Client '{f['name']}' added.", "success")
+    return redirect(url_for("clients"))
+
+
+@app.route("/clients/<cid>/edit", methods=["POST"])
+def clients_edit(cid):
+    f = request.form
+    clients_svc.update_client(cid, {
+        "name": f["name"], "contact_person": f.get("contact_person", ""),
+        "phone": f.get("phone", ""), "email": f.get("email", ""),
+        "address": f.get("address", ""), "epf_account_no": f.get("epf_account_no", ""),
+        "esic_account_no": f.get("esic_account_no", ""),
+    })
+    flash("Client updated.", "success")
+    return redirect(url_for("client_detail", cid=cid))
+
+
+@app.route("/clients/<cid>/toggle", methods=["POST"])
+def clients_toggle(cid):
+    c = clients_svc.get_client(cid)
+    if c and c.get("is_active"):
+        clients_svc.deactivate_client(cid)
+        flash("Client deactivated.", "success")
+    else:
+        clients_svc.reactivate_client(cid)
+        flash("Client reactivated.", "success")
+    return redirect(url_for("clients"))
+
+
+@app.route("/clients/<cid>")
+def client_detail(cid):
+    c = clients_svc.get_client(cid)
+    if not c:
+        flash("Client not found.", "error")
+        return redirect(url_for("clients"))
+    ledger = ledger_svc.get_client_ledger(cid)
+    txns, closing = ([], 0.0)
+    if ledger:
+        txns, closing = ledger_svc.get_ledger_transactions(ledger["id"])
+    outstanding = clients_svc.get_client_outstanding(cid)
+    shorts = [s for s in report_svc.get_short_payments() if s.get("client_id") == cid]
+    excess = [e for e in report_svc.get_excess_payments() if e.get("client_id") == cid]
+    return render_template("client_detail.html", c=c, txns=txns, closing=closing,
+                           outstanding=outstanding, shorts=shorts, excess=excess)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# RECEIPTS
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.route("/receipts")
+def receipts():
+    cl = clients_svc.get_all_clients()
+    banks = ledger_svc.get_bank_ledgers() + ledger_svc.get_cash_ledgers()
+    vlist = voucher_svc.get_vouchers(voucher_type="receipt")
+    for v in vlist:
+        v["amount"] = sum(e.get("debit", 0) for e in v.get("entries", []))
+    return render_template("receipts.html", clients=cl, banks=banks, vouchers=vlist)
+
+
+@app.route("/receipts/add", methods=["POST"])
+def receipts_add():
+    f = request.form
+    bank = ledger_svc.get_ledger(f["bank_ledger_id"])
+    try:
+        res = voucher_svc.create_receipt({
+            "client_id": f["client_id"],
+            "date": _parse_date(f.get("date")),
+            "amount": float(f.get("amount", 0) or 0),
+            "payment_mode": f.get("payment_mode", "bank_transfer"),
+            "reference_no": f.get("reference_no", ""),
+            "narration": f.get("narration", ""),
+            "bank_ledger_id": bank["id"],
+            "bank_ledger_name": bank["name"],
+        })
+        msg = "Receipt saved."
+        if res.get("short_excess_info"):
+            info = res["short_excess_info"]
+            msg += f" {info['type'].title()} of {fmt_currency(info['amount'])} recorded."
+        flash(msg, "success")
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+    return redirect(url_for("receipts"))
+
+
+@app.route("/receipts/<vid>/edit", methods=["POST"])
+def receipts_edit(vid):
+    f = request.form
+    bank = ledger_svc.get_ledger(f["bank_ledger_id"])
+    try:
+        voucher_svc.update_receipt(vid, {
+            "client_id": f["client_id"],
+            "date": _parse_date(f.get("date")),
+            "amount": float(f.get("amount", 0) or 0),
+            "payment_mode": f.get("payment_mode", "bank_transfer"),
+            "reference_no": f.get("reference_no", ""),
+            "narration": f.get("narration", ""),
+            "bank_ledger_id": bank["id"],
+            "bank_ledger_name": bank["name"],
+        })
+        flash("Receipt updated.", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+    return redirect(url_for("receipts"))
+
+
+@app.route("/receipts/<vid>/delete", methods=["POST"])
+def receipts_delete(vid):
+    voucher_svc.delete_voucher(vid)
+    flash("Receipt deleted.", "success")
+    return redirect(url_for("receipts"))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAYMENTS
+# ═══════════════════════════════════════════════════════════════════════════════
+def _expense_ledgers():
+    return (ledger_svc.get_all_ledgers("expense") + ledger_svc.get_all_ledgers("epf_payable")
+            + ledger_svc.get_all_ledgers("esic_payable") + ledger_svc.get_all_ledgers("sundry_creditor"))
+
+
+@app.route("/payments")
+def payments():
+    banks = ledger_svc.get_bank_ledgers() + ledger_svc.get_cash_ledgers()
+    exps = _expense_ledgers()
+    vlist = voucher_svc.get_vouchers(voucher_type="payment")
+    for v in vlist:
+        v["amount"] = sum(e.get("credit", 0) for e in v.get("entries", []))
+    return render_template("payments.html", banks=banks, expenses=exps, vouchers=vlist)
+
+
+@app.route("/payments/add", methods=["POST"])
+def payments_add():
+    f = request.form
+    bank = ledger_svc.get_ledger(f["bank_ledger_id"])
+    exp = ledger_svc.get_ledger(f["expense_ledger_id"])
+    try:
+        voucher_svc.create_payment({
+            "bank_ledger_id": bank["id"], "bank_ledger_name": bank["name"],
+            "expense_ledger_id": exp["id"], "expense_ledger_name": exp["name"],
+            "amount": float(f.get("amount", 0) or 0),
+            "date": _parse_date(f.get("date")),
+            "payment_mode": f.get("payment_mode", "bank_transfer"),
+            "reference_no": f.get("reference_no", ""),
+            "narration": f.get("narration", ""),
+        })
+        flash("Payment saved.", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+    return redirect(url_for("payments"))
+
+
+@app.route("/payments/<vid>/edit", methods=["POST"])
+def payments_edit(vid):
+    f = request.form
+    bank = ledger_svc.get_ledger(f["bank_ledger_id"])
+    exp = ledger_svc.get_ledger(f["expense_ledger_id"])
+    try:
+        voucher_svc.update_payment(vid, {
+            "bank_ledger_id": bank["id"], "bank_ledger_name": bank["name"],
+            "expense_ledger_id": exp["id"], "expense_ledger_name": exp["name"],
+            "amount": float(f.get("amount", 0) or 0),
+            "date": _parse_date(f.get("date")),
+            "reference_no": f.get("reference_no", ""),
+            "narration": f.get("narration", ""),
+        })
+        flash("Payment updated.", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+    return redirect(url_for("payments"))
+
+
+@app.route("/payments/<vid>/delete", methods=["POST"])
+def payments_delete(vid):
+    voucher_svc.delete_voucher(vid)
+    flash("Payment deleted.", "success")
+    return redirect(url_for("payments"))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# JOURNAL
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.route("/journal")
+def journal():
+    ledgers = ledger_svc.get_all_ledgers()
+    vlist = voucher_svc.get_vouchers(voucher_type="journal")
+    for v in vlist:
+        v["total_dr"] = sum(e.get("debit", 0) for e in v.get("entries", []))
+    return render_template("journal.html", ledgers=ledgers, vouchers=vlist)
+
+
+def _collect_journal_entries(f):
+    """Form sends parallel arrays: ledger_id[], debit[], credit[]."""
+    ids = f.getlist("ledger_id[]")
+    debits = f.getlist("debit[]")
+    credits = f.getlist("credit[]")
+    entries = []
+    for i, lid in enumerate(ids):
+        if not lid:
+            continue
+        led = ledger_svc.get_ledger(lid)
+        dr = float(debits[i] or 0) if i < len(debits) else 0
+        cr = float(credits[i] or 0) if i < len(credits) else 0
+        if dr == 0 and cr == 0:
+            continue
+        entries.append({"ledger_id": lid, "ledger_name": led["name"] if led else "",
+                        "debit": dr, "credit": cr})
+    return entries
+
+
+@app.route("/journal/add", methods=["POST"])
+def journal_add():
+    f = request.form
+    entries = _collect_journal_entries(f)
+    try:
+        voucher_svc.create_journal({
+            "date": _parse_date(f.get("date")),
+            "narration": f.get("narration", ""),
+            "entries": entries,
+        })
+        flash("Journal entry saved.", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+    return redirect(url_for("journal"))
+
+
+@app.route("/journal/<vid>/edit", methods=["POST"])
+def journal_edit(vid):
+    f = request.form
+    entries = _collect_journal_entries(f)
+    try:
+        voucher_svc.update_journal(vid, {
+            "date": _parse_date(f.get("date")),
+            "narration": f.get("narration", ""),
+            "entries": entries,
+        })
+        flash("Journal entry updated.", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+    return redirect(url_for("journal"))
+
+
+@app.route("/journal/<vid>/delete", methods=["POST"])
+def journal_delete(vid):
+    voucher_svc.delete_voucher(vid)
+    flash("Journal entry deleted.", "success")
+    return redirect(url_for("journal"))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# LEDGERS
+# ═══════════════════════════════════════════════════════════════════════════════
+GROUPS = {
+    "bank": "Bank Account", "cash": "Cash", "epf_payable": "EPF Payable",
+    "esic_payable": "ESIC Payable", "income": "Income", "expense": "Expense / Overhead",
+    "sundry_debtor": "Sundry Debtor", "sundry_creditor": "Sundry Creditor",
+}
+
+
+@app.route("/ledgers")
+def ledgers():
+    all_l = ledger_svc.get_all_ledgers()
+    for l in all_l:
+        l["balance"] = ledger_svc.get_ledger_balance(l["id"])
+    sel_id = request.args.get("view")
+    txns, closing, sel = [], 0.0, None
+    if sel_id:
+        sel = ledger_svc.get_ledger(sel_id)
+        txns, closing = ledger_svc.get_ledger_transactions(sel_id)
+    return render_template("ledgers.html", ledgers=all_l, groups=GROUPS,
+                           sel=sel, txns=txns, closing=closing)
+
+
+@app.route("/ledgers/add", methods=["POST"])
+def ledgers_add():
+    f = request.form
+    if not f.get("name", "").strip():
+        flash("Ledger name is required.", "error")
+        return redirect(url_for("ledgers"))
+    ledger_svc.create_ledger({
+        "name": f["name"], "group": f["group"],
+        "opening_balance": f.get("opening_balance", 0) or 0,
+        "opening_balance_type": f.get("opening_balance_type", "dr"),
+        "account_no": f.get("account_no", ""),
+    })
+    flash(f"Ledger '{f['name']}' created.", "success")
+    return redirect(url_for("ledgers"))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DAY BOOK
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.route("/daybook")
+def daybook():
+    from_s = request.args.get("from") or date.today().strftime("%Y-%m-%d")
+    to_s = request.args.get("to") or date.today().strftime("%Y-%m-%d")
+    vtype = request.args.get("type", "All")
+    kw = {"from_date": _parse_date(from_s),
+          "to_date": datetime.combine(_parse_date(to_s).date(), datetime.max.time()),
+          "limit": 500}
+    if vtype != "All":
+        kw["voucher_type"] = vtype.lower()
+    vouchers = voucher_svc.get_vouchers(**kw)
+    rcpt_total = sum(sum(e.get("debit", 0) for e in v.get("entries", []))
+                     for v in vouchers if v.get("voucher_type") == "receipt")
+    pay_total = sum(sum(e.get("credit", 0) for e in v.get("entries", []))
+                    for v in vouchers if v.get("voucher_type") == "payment")
+    for v in vouchers:
+        v["amount"] = max(sum(e.get("debit", 0) for e in v.get("entries", [])),
+                          sum(e.get("credit", 0) for e in v.get("entries", [])))
+    return render_template("daybook.html", vouchers=vouchers, from_s=from_s, to_s=to_s,
+                           vtype=vtype, rcpt_total=rcpt_total, pay_total=pay_total)
+
+
+@app.route("/daybook/<vid>/delete", methods=["POST"])
+def daybook_delete(vid):
+    voucher_svc.delete_voucher(vid)
+    flash("Entry deleted.", "success")
+    return redirect(request.referrer or url_for("daybook"))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# REPORTS
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.route("/reports")
+def reports():
+    tab = request.args.get("tab", "trial")
+    today = date.today()
+    fy_start = date(today.year if today.month >= 4 else today.year - 1, 4, 1)
+
+    ctx = {"tab": tab, "fy_start": fy_start.strftime("%Y-%m-%d"),
+           "today": today.strftime("%Y-%m-%d")}
+
+    if tab == "trial":
+        as_of = request.args.get("as_of") or today.strftime("%Y-%m-%d")
+        tb = report_svc.get_trial_balance(
+            datetime.combine(_parse_date(as_of).date(), datetime.max.time()))
+        ctx["tb"] = tb
+        ctx["as_of"] = as_of
+        ctx["total_dr"] = sum(r["closing_dr"] for r in tb)
+        ctx["total_cr"] = sum(r["closing_cr"] for r in tb)
+    elif tab == "pl":
+        pf = request.args.get("from") or fy_start.strftime("%Y-%m-%d")
+        pt = request.args.get("to") or today.strftime("%Y-%m-%d")
+        ctx["pl"] = report_svc.get_profit_loss(
+            _parse_date(pf), datetime.combine(_parse_date(pt).date(), datetime.max.time()))
+        ctx["pf"], ctx["pt"] = pf, pt
+    elif tab == "short":
+        ctx["shorts"] = report_svc.get_short_payments()
+        ctx["total"] = sum(s.get("difference", 0) for s in ctx["shorts"]
+                           if s.get("status") == "pending")
+    elif tab == "excess":
+        ctx["excess"] = report_svc.get_excess_payments()
+        ctx["total"] = sum(e.get("difference", 0) for e in ctx["excess"]
+                           if e.get("status") == "pending")
+    elif tab == "agewise":
+        ctx["agewise"] = report_svc.get_outstanding_agewise()
+        ctx["grand"] = sum(a["total"] for a in ctx["agewise"])
+
+    return render_template("reports.html", **ctx)
+
+
+@app.route("/reports/se/<rid>/status", methods=["POST"])
+def update_se_status(rid):
+    f = request.form
+    report_svc.update_short_excess_status(rid, f["status"], f.get("remarks", ""))
+    flash("Status updated.", "success")
+    return redirect(url_for("reports", tab=f.get("tab", "short")))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SETTINGS
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.route("/settings")
+def settings():
+    return render_template("settings.html", counts=admin_svc.count_all())
+
+
+@app.route("/settings/reset-transactions", methods=["POST"])
+def reset_transactions():
+    if request.form.get("confirm", "").strip().upper() == "RESET TRANSACTIONS":
+        res = admin_svc.reset_transactions()
+        flash(f"Cleared — Vouchers: {res['vouchers']}, Short/Excess: {res['short_excess']}. "
+              f"Clients & Ledgers kept.", "success")
+    else:
+        flash("Confirmation text did not match. Type exactly: RESET TRANSACTIONS", "error")
+    return redirect(url_for("settings"))
+
+
+@app.route("/settings/reset-all", methods=["POST"])
+def reset_all():
+    if request.form.get("confirm", "").strip().upper() == "DELETE EVERYTHING":
+        res = admin_svc.reset_everything()
+        flash(f"Full reset done — {sum(res.values())} records deleted.", "success")
+    else:
+        flash("Confirmation text did not match. Type exactly: DELETE EVERYTHING", "error")
+    return redirect(url_for("settings"))
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8000)), debug=True)
