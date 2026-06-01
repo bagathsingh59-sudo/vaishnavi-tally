@@ -32,12 +32,14 @@ journal   = st.Page("pages/4_Journal.py",   title="Journal",   icon="📓", url_
 ledgers   = st.Page("pages/5_Ledgers.py",   title="Ledgers",   icon="📒", url_path="Ledgers")
 reports   = st.Page("pages/6_Reports.py",   title="Reports",   icon="📊", url_path="Reports")
 daybook   = st.Page("pages/7_DayBook.py",   title="Day Book",  icon="📅", url_path="DayBook")
+settings  = st.Page("pages/8_Settings.py",  title="Settings",  icon="⚙️", url_path="Settings")
 
 pg = st.navigation({
     "Gateway":             [dashboard],
     "Accounting Vouchers": [receipts, payments, journal],
     "Masters":             [clients, ledgers],
     "Display / Reports":   [daybook, reports],
+    "Admin":               [settings],
 })
 
 pg.run()
