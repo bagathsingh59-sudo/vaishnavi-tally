@@ -73,8 +73,8 @@ new Chart(document.getElementById("trendChart"), {
   type:"bar",
   data:{ labels:{{ chart.labels|tojson }},
     datasets:[
-      {label:"Receipts", data:{{ chart.receipts|tojson }}, backgroundColor:"#1E8449"},
-      {label:"Payments", data:{{ chart.payments|tojson }}, backgroundColor:"#C0392B"}
+      {label:"Receipts", data:{{ chart.receipts|tojson }}, backgroundColor:"#1e8e3e", borderRadius:4},
+      {label:"Payments", data:{{ chart.payments|tojson }}, backgroundColor:"#d33", borderRadius:4}
     ]},
   options:{plugins:{legend:{position:"top"}}, scales:{y:{beginAtZero:true}}}
 });
@@ -82,7 +82,7 @@ new Chart(document.getElementById("fundsChart"), {
   type:"doughnut",
   data:{ labels:["Bank","Cash"],
     datasets:[{data:[{{ s.bank_balance }}, {{ s.cash_balance }}],
-      backgroundColor:["#002B5C","#FFD700"]}]},
+      backgroundColor:["#003366","#5b9bd5"]}]},
   options:{plugins:{legend:{position:"bottom"}}}
 });
 </script>
