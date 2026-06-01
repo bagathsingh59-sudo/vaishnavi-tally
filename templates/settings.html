@@ -10,6 +10,26 @@
   <div class="card"><div class="lbl">Short / Excess</div><div class="val">{{ counts.short_excess }}</div></div>
 </div>
 
+<div class="section">🚀 Quick Setup — Create Standard Ledgers + Sample Client</div>
+<div class="panel">
+  <p>One click creates your standard chart of accounts and a sample client so you can
+     start entering vouchers immediately. Already-existing names are skipped (safe to click again).</p>
+  <ul style="font-size:13px;color:#555;columns:2">
+    <li>SBI Current Account <span class="muted">(Bank)</span></li>
+    <li>Cash-in-Hand <span class="muted">(Cash)</span></li>
+    <li>EPF Payable <span class="muted">(Current Liability)</span></li>
+    <li>ESIC Payable <span class="muted">(Current Liability)</span></li>
+    <li>Excess Payment <span class="muted">(Current Liability)</span></li>
+    <li>Professional Fees <span class="muted">(Indirect Income)</span></li>
+    <li>Other Works Charges <span class="muted">(Indirect Income)</span></li>
+    <li>Salary Payable <span class="muted">(Expense)</span></li>
+    <li>XYZ Company (Sample) <span class="muted">(Sundry Debtor client)</span></li>
+  </ul>
+  <form method="post" action="/settings/starter-setup">
+    <button class="btn primary" type="submit">🚀 Create Starter Ledgers + Sample Client</button>
+  </form>
+</div>
+
 <div class="section">🧹 Option 1 — Clear Transactions Only</div>
 <div class="panel">
   <p>Deletes all <b>vouchers</b> (Receipts, Payments, Journals), short/excess records and

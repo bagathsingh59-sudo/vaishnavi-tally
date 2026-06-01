@@ -172,10 +172,14 @@ def get_trial_balance(as_of_date: datetime = None) -> list:
     return result
 
 
+INCOME_GROUPS = ["income", "indirect_income", "direct_income"]
+EXPENSE_GROUPS = ["expense", "indirect_expense", "direct_expense"]
+
+
 def get_profit_loss(from_date: datetime, to_date: datetime) -> dict:
     db = get_db()
-    income_ledgers = list(db.ledgers.find({"group": "income", "is_active": True}))
-    expense_ledgers = list(db.ledgers.find({"group": "expense", "is_active": True}))
+    income_ledgers = list(db.ledgers.find({"group": {"$in": INCOME_GROUPS}, "is_active": True}))
+    expense_ledgers = list(db.ledgers.find({"group": {"$in": EXPENSE_GROUPS}, "is_active": True}))
 
     def sum_ledger(ledger_id, side: str) -> float:
         agg = list(db.vouchers.aggregate([

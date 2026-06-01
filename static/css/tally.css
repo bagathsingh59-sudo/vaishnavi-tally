@@ -136,6 +136,9 @@ input:focus,select:focus,textarea:focus{outline:none; border-color:var(--accent)
 .fkeybar a:hover b{color:#cfe0f2;}
 .fkeybar .hint{margin-left:auto; color:var(--muted); padding-right:8px; align-self:center;}
 
+/* ── Live balance hint ── */
+.balhint{display:block; font-size:11px; font-weight:600; margin-top:3px; min-height:14px;}
+
 /* ── Misc ── */
 .muted{color:var(--muted);}
 .right{text-align:right;}

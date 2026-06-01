@@ -7,16 +7,18 @@
   <div class="form-row">
     <div class="field"><label>Date *</label><input type="date" name="date" value="{{ TODAY|dateinput }}"></div>
     <div class="field"><label>Account — Pay From *</label>
-      <select name="bank_ledger_id" required>
-        {% for b in banks %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}</select></div>
+      <select name="bank_ledger_id" class="bal" required>
+        {% for b in banks %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}</select>
+      <small class="balhint"></small></div>
     <div class="field"><label>Payment Mode</label>
       <select name="payment_mode"><option>NEFT/IMPS</option><option>UPI</option>
         <option>Cheque</option><option>Cash</option></select></div>
   </div>
   <div class="form-row">
     <div class="field"><label>Pay To (Expense / Payable) *</label>
-      <select name="expense_ledger_id" required>
-        {% for e in expenses %}<option value="{{ e.id }}">{{ e.name }}</option>{% endfor %}</select></div>
+      <select name="expense_ledger_id" class="bal" required>
+        {% for e in expenses %}<option value="{{ e.id }}">{{ e.name }}</option>{% endfor %}</select>
+      <small class="balhint"></small></div>
     <div class="field"><label>Amount (₹) *</label><input type="number" step="0.01" name="amount" required></div>
     <div class="field"><label>Reference No</label><input name="reference_no"></div>
   </div>

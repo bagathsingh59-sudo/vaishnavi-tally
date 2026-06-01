@@ -22,6 +22,28 @@ document.addEventListener("keydown", function (e) {
   }
 });
 
+// ── Live ledger balance (Cur Bal) beside a ledger <select class="bal"> ──
+async function loadBal(sel) {
+  const hint = sel.parentElement.querySelector(".balhint");
+  if (!hint) return;
+  if (!sel.value) { hint.textContent = ""; return; }
+  try {
+    const r = await fetch("/api/ledger/" + sel.value + "/balance");
+    const d = await r.json();
+    hint.textContent = "Cur Bal: " + d.formatted;
+    hint.style.color = d.type === "Dr" ? "#d33" : "#1e8e3e";
+  } catch (e) { hint.textContent = ""; }
+}
+function attachBalances() {
+  document.querySelectorAll("select.bal").forEach((sel) => {
+    if (sel.dataset.wired) return;
+    sel.dataset.wired = "1";
+    sel.addEventListener("change", () => loadBal(sel));
+    if (sel.value) loadBal(sel);
+  });
+}
+document.addEventListener("DOMContentLoaded", attachBalances);
+
 // Dynamic row tables (journal / multi-row). Clone last row.
 function addRow(tableId) {
   const tbody = document.querySelector("#" + tableId + " tbody");
@@ -29,10 +51,12 @@ function addRow(tableId) {
   const clone = rows[rows.length - 1].cloneNode(true);
   clone.querySelectorAll("input, select").forEach((el) => {
     if (el.type === "number") el.value = "";
-    else if (el.tagName === "SELECT") el.selectedIndex = 0;
+    else if (el.tagName === "SELECT") { el.selectedIndex = 0; el.dataset.wired = ""; }
     else el.value = "";
   });
+  clone.querySelectorAll(".balhint").forEach((h) => (h.textContent = ""));
   tbody.appendChild(clone);
+  attachBalances();
   recalcJournal();
 }
 

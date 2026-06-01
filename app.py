@@ -221,9 +221,16 @@ def receipts_delete(vid):
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAYMENTS
 # ═══════════════════════════════════════════════════════════════════════════════
+# Groups that can appear on the "Pay To" side of a Payment voucher
+PAYABLE_GROUPS = ["expense", "indirect_expense", "direct_expense",
+                  "epf_payable", "esic_payable", "current_liability", "sundry_creditor"]
+
+
 def _expense_ledgers():
-    return (ledger_svc.get_all_ledgers("expense") + ledger_svc.get_all_ledgers("epf_payable")
-            + ledger_svc.get_all_ledgers("esic_payable") + ledger_svc.get_all_ledgers("sundry_creditor"))
+    out = []
+    for g in PAYABLE_GROUPS:
+        out += ledger_svc.get_all_ledgers(g)
+    return out
 
 
 @app.route("/payments")
@@ -358,9 +365,20 @@ def journal_delete(vid):
 # LEDGERS
 # ═══════════════════════════════════════════════════════════════════════════════
 GROUPS = {
-    "bank": "Bank Account", "cash": "Cash", "epf_payable": "EPF Payable",
-    "esic_payable": "ESIC Payable", "income": "Income", "expense": "Expense / Overhead",
-    "sundry_debtor": "Sundry Debtor", "sundry_creditor": "Sundry Creditor",
+    "bank": "Bank Account",
+    "cash": "Cash-in-Hand",
+    "sundry_debtor": "Sundry Debtors",
+    "sundry_creditor": "Sundry Creditors",
+    "current_liability": "Current Liabilities",
+    "epf_payable": "EPF Payable (Current Liability)",
+    "esic_payable": "ESIC Payable (Current Liability)",
+    "current_asset": "Current Assets",
+    "indirect_income": "Indirect Income",
+    "direct_income": "Direct Income",
+    "indirect_expense": "Indirect Expenses",
+    "direct_expense": "Direct Expenses",
+    "income": "Income (General)",
+    "expense": "Expenses (General)",
 }
 
 
@@ -376,6 +394,20 @@ def ledgers():
         txns, closing = ledger_svc.get_ledger_transactions(sel_id)
     return render_template("ledgers.html", ledgers=all_l, groups=GROUPS,
                            sel=sel, txns=txns, closing=closing)
+
+
+@app.route("/api/ledger/<lid>/balance")
+def api_ledger_balance(lid):
+    """Live current balance for a ledger (used by Journal/Payment/Receipt forms)."""
+    try:
+        bal = ledger_svc.get_ledger_balance(lid)
+        return jsonify({
+            "balance": abs(bal),
+            "type": "Dr" if bal >= 0 else "Cr",
+            "formatted": fmt_currency(abs(bal)) + (" Dr" if bal >= 0 else " Cr"),
+        })
+    except Exception:
+        return jsonify({"balance": 0, "type": "Dr", "formatted": "—"})
 
 
 @app.route("/ledgers/add", methods=["POST"])
@@ -481,6 +513,20 @@ def update_se_status(rid):
 @app.route("/settings")
 def settings():
     return render_template("settings.html", counts=admin_svc.count_all())
+
+
+@app.route("/settings/starter-setup", methods=["POST"])
+def starter_setup():
+    res = admin_svc.create_starter_setup()
+    parts = []
+    if res["ledgers"]:
+        parts.append(f"{len(res['ledgers'])} ledgers created ({', '.join(res['ledgers'])})")
+    if res["clients"]:
+        parts.append(f"sample client '{res['clients'][0]}' created")
+    if res["skipped"]:
+        parts.append(f"skipped existing: {', '.join(res['skipped'])}")
+    flash("Starter setup: " + ("; ".join(parts) if parts else "nothing to create."), "success")
+    return redirect(url_for("settings"))
 
 
 @app.route("/settings/reset-transactions", methods=["POST"])

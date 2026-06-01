@@ -13,19 +13,19 @@
       <th class="num">Debit (₹)</th><th class="num">Credit (₹)</th><th></th></tr></thead>
     <tbody>
       <tr>
-        <td><select name="ledger_id[]">
+        <td><select name="ledger_id[]" class="bal">
           <option value="">— Select —</option>
           {% for l in ledgers %}<option value="{{ l.id }}">{{ l.name }}</option>{% endfor %}
-        </select></td>
+        </select><small class="balhint"></small></td>
         <td><input type="number" step="0.01" name="debit[]" class="num" style="width:100%"></td>
         <td><input type="number" step="0.01" name="credit[]" class="num" style="width:100%"></td>
         <td><button type="button" class="btn sm danger" onclick="removeRow(this)">✕</button></td>
       </tr>
       <tr>
-        <td><select name="ledger_id[]">
+        <td><select name="ledger_id[]" class="bal">
           <option value="">— Select —</option>
           {% for l in ledgers %}<option value="{{ l.id }}">{{ l.name }}</option>{% endfor %}
-        </select></td>
+        </select><small class="balhint"></small></td>
         <td><input type="number" step="0.01" name="debit[]" class="num" style="width:100%"></td>
         <td><input type="number" step="0.01" name="credit[]" class="num" style="width:100%"></td>
         <td><button type="button" class="btn sm danger" onclick="removeRow(this)">✕</button></td>
