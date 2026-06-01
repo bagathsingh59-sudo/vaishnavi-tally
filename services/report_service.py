@@ -102,28 +102,63 @@ def get_dashboard_stats() -> dict:
         {"$limit": 12},
     ]))
 
-    # Voucher counts by type
-    type_counts = {}
-    for row in db.vouchers.aggregate([
-        {"$group": {"_id": "$voucher_type", "count": {"$sum": 1}}}
-    ]):
-        type_counts[row["_id"]] = row["count"]
+    # ── LIVE client balances (replaces old invoice/tracker sources) ──
+    receivable_total = 0.0   # clients owe us (Dr) = short
+    excess_total = 0.0       # we hold their money (Cr) = excess
+    short_count = 0
+    excess_count = 0
+    for cb in get_client_balances():
+        if cb["typ"] == "short":
+            receivable_total += cb["balance"]
+            short_count += 1
+        elif cb["typ"] == "excess":
+            excess_total += cb["balance"]
+            excess_count += 1
+
+    # ── Earnings this financial year (income & expense breakdown) ──
+    fy_start = today.replace(month=4, day=1, hour=0, minute=0, second=0, microsecond=0)
+    if today.month < 4:
+        fy_start = fy_start.replace(year=today.year - 1)
+    pl = get_profit_loss(fy_start, today)
+
+    # ── Government dues still pending (EPF/ESIC Payable credit balances) ──
+    from services.ledger_service import get_ledger_balance
+    govt_pending = 0.0
+    for l in db.ledgers.find({"group": {"$in": ["epf_payable", "esic_payable"]},
+                              "is_active": True}):
+        bal = get_ledger_balance(str(l["_id"]))
+        if bal < 0:                      # Cr balance = still payable
+            govt_pending += -bal
 
     return {
         "month_receipts": month_receipts,
         "month_payments": month_payments,
-        "total_outstanding": total_outstanding,
-        "short_pending_count": short_pending,
-        "short_pending_amount": short_amount,
-        "excess_held": excess_amount,
         "bank_balance": bank_balance,
         "cash_balance": cash_balance,
+        # live client positions
+        "receivable_total": receivable_total,
+        "excess_total": excess_total,
+        "short_count": short_count,
+        "excess_count": excess_count,
+        # earnings
+        "income_items": pl["income"],
+        "expense_items": pl["expenses"],
+        "total_income": pl["total_income"],
+        "total_expense": pl["total_expense"],
+        "net_profit": pl["net_profit"],
+        "govt_pending": govt_pending,
+        # counts
         "total_clients": db.clients.count_documents({"is_active": True}),
         "total_vouchers": db.vouchers.count_documents({}),
+        # lists / charts
         "recent_vouchers": recent_list,
         "monthly_chart": monthly_data,
         "monthly_payments": monthly_pay,
-        "type_counts": type_counts,
+        # kept for backward-compat
+        "total_outstanding": receivable_total,
+        "short_pending_count": short_count,
+        "short_pending_amount": receivable_total,
+        "excess_held": excess_total,
     }
 
 

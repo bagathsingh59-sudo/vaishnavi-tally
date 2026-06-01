@@ -3,42 +3,95 @@
 {% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>{% endblock %}
 {% block content %}
 
-<div class="section">💵 Financial Position</div>
+{# ─────────────── FINANCIAL POSITION ─────────────── #}
+<div class="section">💼 Financial Position</div>
 <div class="cards">
-  <a class="card click" href="/ledgers"><div class="lbl">💰 Total Liquid Funds</div>
-    <div class="val">{{ liquid|inr }}</div><div class="sub">Bank + Cash</div></a>
-  <a class="card click" href="/ledgers"><div class="lbl">🏦 Bank Balance</div>
-    <div class="val">{{ s.bank_balance|inr }}</div></a>
-  <a class="card click" href="/ledgers"><div class="lbl">💵 Cash in Hand</div>
-    <div class="val">{{ s.cash_balance|inr }}</div></a>
-  <a class="card click" href="/reports?tab=agewise"><div class="lbl">📊 Outstanding</div>
-    <div class="val">{{ s.total_outstanding|inr }}</div>
-    <div class="sub">{{ s.short_pending_count }} parties short</div></a>
+  <a class="card click" href="/ledgers">
+    <div class="lbl">💰 Total Liquid Funds</div>
+    <div class="val">{{ liquid|inr }}</div><div class="sub">Bank + Cash on hand</div></a>
+  <a class="card click" href="/ledgers">
+    <div class="lbl">🏦 Bank Balance</div><div class="val">{{ s.bank_balance|inr }}</div></a>
+  <a class="card click" href="/ledgers">
+    <div class="lbl">💵 Cash in Hand</div><div class="val">{{ s.cash_balance|inr }}</div></a>
+  <a class="card click" href="/reports?tab=trial">
+    <div class="lbl">🏛️ Govt Dues Pending</div>
+    <div class="val" style="color:{{ '#d33' if s.govt_pending > 0 else '#1e8e3e' }}">{{ s.govt_pending|inr }}</div>
+    <div class="sub">EPF + ESIC not yet remitted</div></a>
 </div>
 
-<div class="section">📅 This Month</div>
+{# ─────────────── CLIENT POSITIONS ─────────────── #}
+<div class="section">👥 Client Positions</div>
 <div class="cards">
-  <a class="card click" href="/daybook?type=Receipt"><div class="lbl">⬆️ Receipts (In)</div>
+  <a class="card click" href="/reports?tab=short">
+    <div class="lbl">🔴 Receivable (clients owe you)</div>
+    <div class="val" style="color:#d33">{{ s.receivable_total|inr }}</div>
+    <div class="sub">{{ s.short_count }} client(s) short</div></a>
+  <a class="card click" href="/reports?tab=excess">
+    <div class="lbl">🟢 Excess Held (you owe clients)</div>
+    <div class="val" style="color:#1e8e3e">{{ s.excess_total|inr }}</div>
+    <div class="sub">{{ s.excess_count }} client(s) in excess</div></a>
+  <a class="card click" href="/reports?tab=clients">
+    <div class="lbl">📇 Active Clients</div>
+    <div class="val">{{ s.total_clients }}</div>
+    <div class="sub">View all balances →</div></a>
+  <a class="card click" href="/daybook">
+    <div class="lbl">📑 Total Vouchers</div>
+    <div class="val">{{ s.total_vouchers }}</div>
+    <div class="sub">All entries →</div></a>
+</div>
+
+{# ─────────────── EARNINGS (THIS FY) ─────────────── #}
+<div class="section">📈 Earnings — This Financial Year ({{ FY_LABEL }})</div>
+<div class="cards">
+  {% for inc in s.income_items %}
+  <a class="card click" href="/reports?tab=pl">
+    <div class="lbl">💼 {{ inc.name }}</div>
+    <div class="val" style="color:#1e8e3e">{{ inc.amount|inr }}</div></a>
+  {% endfor %}
+  <a class="card click" href="/reports?tab=pl" style="border-top-color:#1e8e3e">
+    <div class="lbl">Σ Total Income</div>
+    <div class="val" style="color:#1e8e3e">{{ s.total_income|inr }}</div>
+    <div class="sub">All income heads combined</div></a>
+  {% if s.total_expense > 0 %}
+  <a class="card click" href="/reports?tab=pl">
+    <div class="lbl">📉 Total Expenses</div>
+    <div class="val" style="color:#d33">{{ s.total_expense|inr }}</div></a>
+  {% endif %}
+  <a class="card click" href="/reports?tab=pl" style="border-top-color:#0a66c2">
+    <div class="lbl">🏆 Net Profit</div>
+    <div class="val" style="color:{{ '#1e8e3e' if s.net_profit>=0 else '#d33' }}">{{ s.net_profit|inr }}</div>
+    <div class="sub">Income − Expenses</div></a>
+</div>
+
+{# ─────────────── THIS MONTH ─────────────── #}
+<div class="section">📅 This Month — Cash Movement</div>
+<div class="cards">
+  <a class="card click" href="/daybook?type=Receipt">
+    <div class="lbl">⬆️ Receipts (money in)</div>
     <div class="val cr">{{ s.month_receipts|inr }}</div></a>
-  <a class="card click" href="/daybook?type=Payment"><div class="lbl">⬇️ Payments (Out)</div>
+  <a class="card click" href="/daybook?type=Payment">
+    <div class="lbl">⬇️ Payments (money out)</div>
     <div class="val dr">{{ s.month_payments|inr }}</div></a>
-  <div class="card"><div class="lbl">💹 Net Cash Flow</div>
-    <div class="val">{{ (s.month_receipts - s.month_payments)|inr }}</div></div>
-  <a class="card click" href="/reports?tab=short"><div class="lbl">🔴 Short / 🟢 Excess</div>
-    <div class="val" style="font-size:15px">{{ s.short_pending_amount|inr }} / {{ s.excess_held|inr }}</div></a>
+  <div class="card" style="border-top-color:{{ '#1e8e3e' if (s.month_receipts-s.month_payments)>=0 else '#d33' }}">
+    <div class="lbl">💹 Net Cash Flow</div>
+    <div class="val" style="color:{{ '#1e8e3e' if (s.month_receipts-s.month_payments)>=0 else '#d33' }}">
+      {{ (s.month_receipts - s.month_payments)|inr }}</div>
+    <div class="sub">Cash in − out this month <i>(timing, not profit)</i></div></div>
 </div>
 
+{# ─────────────── CHARTS ─────────────── #}
 <div class="grid2">
   <div>
-    <div class="section">📈 Receipts vs Payments</div>
-    <div class="panel"><canvas id="trendChart" height="130"></canvas></div>
+    <div class="section">📊 Receipts vs Payments (monthly)</div>
+    <div class="panel"><canvas id="trendChart" height="150"></canvas></div>
   </div>
   <div>
-    <div class="section">🏦 Funds Split</div>
-    <div class="panel"><canvas id="fundsChart" height="130"></canvas></div>
+    <div class="section">🥧 Income Composition</div>
+    <div class="panel"><canvas id="incomeChart" height="150"></canvas></div>
   </div>
 </div>
 
+{# ─────────────── RECENT + QUICK ENTRY ─────────────── #}
 <div class="grid2">
   <div>
     <div class="section">🕐 Recent Transactions</div>
@@ -55,20 +108,19 @@
   </div>
   <div>
     <div class="section">⚡ Quick Entry</div>
-    <div class="cards" style="margin-bottom:10px">
-      <div class="card"><div class="lbl">👥 Active Clients</div><div class="val">{{ s.total_clients }}</div></div>
-      <div class="card"><div class="lbl">📑 Total Vouchers</div><div class="val">{{ s.total_vouchers }}</div></div>
-    </div>
-    <a class="btn primary" href="/journal" style="display:block;text-align:center;margin:6px 0">📓 New Journal (F7)</a>
-    <a class="btn" href="/receipts" style="display:block;text-align:center;margin:6px 0">💰 New Receipt (F6)</a>
-    <a class="btn" href="/payments" style="display:block;text-align:center;margin:6px 0">💸 New Payment (F5)</a>
-    <a class="btn ghost" href="/daybook" style="display:block;text-align:center;margin:6px 0">📅 Day Book (F8)</a>
+    <a class="btn primary" href="/journal" style="display:block;text-align:center;margin:8px 0">📓 New Journal (F7)</a>
+    <a class="btn" href="/receipts" style="display:block;text-align:center;margin:8px 0">💰 New Receipt (F6)</a>
+    <a class="btn" href="/payments" style="display:block;text-align:center;margin:8px 0">💸 New Payment (F5)</a>
+    <a class="btn ghost" href="/reports?tab=clients" style="display:block;text-align:center;margin:8px 0">👥 Client Balances</a>
+    <a class="btn ghost" href="/daybook" style="display:block;text-align:center;margin:8px 0">📅 Day Book (F8)</a>
   </div>
 </div>
 
 {% endblock %}
 {% block scripts %}
 <script>
+const inr = v => "₹" + Number(v).toLocaleString("en-IN");
+
 new Chart(document.getElementById("trendChart"), {
   type:"bar",
   data:{ labels:{{ chart.labels|tojson }},
@@ -76,14 +128,25 @@ new Chart(document.getElementById("trendChart"), {
       {label:"Receipts", data:{{ chart.receipts|tojson }}, backgroundColor:"#1e8e3e", borderRadius:4},
       {label:"Payments", data:{{ chart.payments|tojson }}, backgroundColor:"#d33", borderRadius:4}
     ]},
-  options:{plugins:{legend:{position:"top"}}, scales:{y:{beginAtZero:true}}}
+  options:{plugins:{legend:{position:"top"},
+    tooltip:{callbacks:{label:c=>c.dataset.label+": "+inr(c.raw)}}},
+    scales:{y:{beginAtZero:true, ticks:{callback:v=>inr(v)}}}}
 });
-new Chart(document.getElementById("fundsChart"), {
-  type:"doughnut",
-  data:{ labels:["Bank","Cash"],
-    datasets:[{data:[{{ s.bank_balance }}, {{ s.cash_balance }}],
-      backgroundColor:["#003366","#5b9bd5"]}]},
-  options:{plugins:{legend:{position:"bottom"}}}
-});
+
+const incLabels = {{ s.income_items|map(attribute='name')|list|tojson }};
+const incData   = {{ s.income_items|map(attribute='amount')|list|tojson }};
+if (incData.reduce((a,b)=>a+b,0) > 0) {
+  new Chart(document.getElementById("incomeChart"), {
+    type:"doughnut",
+    data:{ labels:incLabels,
+      datasets:[{data:incData,
+        backgroundColor:["#0a66c2","#1e8e3e","#b58100","#5b9bd5","#8e44ad","#e67e22"]}]},
+    options:{plugins:{legend:{position:"bottom"},
+      tooltip:{callbacks:{label:c=>c.label+": "+inr(c.raw)}}}}
+  });
+} else {
+  document.getElementById("incomeChart").parentElement.innerHTML =
+    '<p class="muted">No income recorded yet.</p>';
+}
 </script>
 {% endblock %}
