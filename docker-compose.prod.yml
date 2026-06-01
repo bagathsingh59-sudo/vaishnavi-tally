@@ -1,0 +1,18 @@
+# Production override — use with: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Connects to MongoDB Atlas instead of a local container.
+# Set MONGO_URI_PROD in your server's environment before running.
+
+version: "3.9"
+
+services:
+  app:
+    environment:
+      - ENV=production
+      - DB_NAME=vaishnavi_tally
+      - MONGO_URI_PROD=${MONGO_URI_PROD}        # set on your server: export MONGO_URI_PROD=...
+      - FIRM_NAME=Vaishnavi Consultants
+    volumes: []                                 # no live-mount in production
+
+  mongodb:                                      # disable the local MongoDB in production
+    profiles:
+      - dev_only

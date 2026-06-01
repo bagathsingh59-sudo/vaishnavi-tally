@@ -1,19 +1,55 @@
 import os
 from pymongo import MongoClient
-from dotenv import load_dotenv
 
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 _client = None
+
+
+def _mongo_uri() -> str:
+    """
+    URI resolution priority:
+    1. Streamlit secrets (st.secrets) — for Streamlit Community Cloud
+    2. Environment variables — for Docker / Railway / Render / local
+    """
+    try:
+        import streamlit as st
+        secrets = st.secrets
+        if "MONGO_URI" in secrets:
+            return secrets["MONGO_URI"]
+        env = secrets.get("ENV", os.getenv("ENV", "development"))
+        if env == "production" and "MONGO_URI_PROD" in secrets:
+            return secrets["MONGO_URI_PROD"]
+        if "MONGO_URI_DEV" in secrets:
+            return secrets["MONGO_URI_DEV"]
+    except Exception:
+        pass
+
+    env = os.getenv("ENV", "development")
+    if env == "production":
+        return os.getenv("MONGO_URI_PROD", "")
+    return os.getenv("MONGO_URI_DEV", "mongodb://localhost:27017")
+
+
+def _db_name() -> str:
+    try:
+        import streamlit as st
+        if "DB_NAME" in st.secrets:
+            return st.secrets["DB_NAME"]
+    except Exception:
+        pass
+    return os.getenv("DB_NAME", "vaishnavi_tally")
 
 
 def get_db():
     global _client
     if _client is None:
-        env = os.getenv("ENV", "development")
-        uri = os.getenv("MONGO_URI_PROD") if env == "production" else os.getenv("MONGO_URI_DEV", "mongodb://localhost:27017")
-        _client = MongoClient(uri)
-    return _client[os.getenv("DB_NAME", "vaishnavi_tally")]
+        _client = MongoClient(_mongo_uri(), serverSelectionTimeoutMS=5000)
+    return _client[_db_name()]
 
 
 def ensure_indexes():

@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: vaishnavi-tally
+    runtime: docker
+    plan: free
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: ENV
+        value: production
+      - key: DB_NAME
+        value: vaishnavi_tally
+      - key: FIRM_NAME
+        value: Vaishnavi Consultants
+      - key: MONGO_URI_PROD
+        sync: false   # set this manually in Render dashboard (MongoDB Atlas URI)

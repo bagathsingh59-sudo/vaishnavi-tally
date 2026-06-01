@@ -46,3 +46,9 @@ data/backups/
 
 # MongoDB local data
 mongo_data/
+
+# Docker
+*.pid
+
+# Streamlit secrets (never commit real secrets)
+.streamlit/secrets.toml
