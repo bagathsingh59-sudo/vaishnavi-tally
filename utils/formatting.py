@@ -266,7 +266,7 @@ hr { border-color: #002B5C !important; border-width: 1px !important; }
 # ── F-key navigation bar ──────────────────────────────────────────────────────
 
 FKEYS = [
-    ("F1",  "Home",     "/app"),
+    ("F1",  "Dashboard", "/"),
     ("F2",  "Clients",  "/Clients"),
     ("F5",  "Payment",  "/Payments"),
     ("F6",  "Receipt",  "/Receipts"),

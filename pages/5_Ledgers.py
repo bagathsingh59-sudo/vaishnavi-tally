@@ -7,9 +7,7 @@ from datetime import datetime, date
 from services.ledger_service import get_all_ledgers, create_ledger, get_ledger_transactions
 from utils.formatting import fmt_currency, fmt_date, TALLY_CSS, fkey_bar, keyboard_shortcuts
 
-st.set_page_config(page_title="Ledgers — Vaishnavi", layout="wide")
 st.markdown(TALLY_CSS, unsafe_allow_html=True)
-keyboard_shortcuts()
 st.markdown('<div class="tally-titlebar">📒 &nbsp;LEDGER — ACCOUNTS BOOK<span>F9 · Display</span></div>', unsafe_allow_html=True)
 
 GROUPS = {

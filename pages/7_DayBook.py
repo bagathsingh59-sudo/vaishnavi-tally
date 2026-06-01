@@ -8,9 +8,7 @@ from services.voucher_service import get_vouchers
 from utils.formatting import fmt_currency, fmt_date, TALLY_CSS, fkey_bar, keyboard_shortcuts
 from database import get_db
 
-st.set_page_config(page_title="Day Book — Vaishnavi", layout="wide")
 st.markdown(TALLY_CSS, unsafe_allow_html=True)
-keyboard_shortcuts()
 st.markdown('<div class="tally-titlebar">📅 &nbsp;DAY BOOK<span>Display · All Vouchers</span></div>',
             unsafe_allow_html=True)
 

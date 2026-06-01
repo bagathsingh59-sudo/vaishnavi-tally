@@ -11,9 +11,7 @@ from services.ledger_service import get_ledger_transactions, get_client_ledger
 from services.report_service import get_short_payments, get_excess_payments
 from utils.formatting import fmt_currency, fmt_date, fmt_month, TALLY_CSS, fkey_bar, keyboard_shortcuts
 
-st.set_page_config(page_title="Clients — Vaishnavi", layout="wide")
 st.markdown(TALLY_CSS, unsafe_allow_html=True)
-keyboard_shortcuts()
 st.markdown('<div class="tally-titlebar">👥 &nbsp;CLIENTS — SUNDRY DEBTORS<span>F2 · Master Data</span></div>', unsafe_allow_html=True)
 
 tab1, tab2, tab3 = st.tabs(["📋 Client List", "➕ Add New Client", "📄 Client Ledger"])

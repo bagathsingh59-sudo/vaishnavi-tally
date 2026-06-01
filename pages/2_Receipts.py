@@ -10,9 +10,7 @@ from services.voucher_service import create_receipt, get_vouchers
 from services.counter_service import get_next_number
 from utils.formatting import fmt_currency, fmt_date, TALLY_CSS, fkey_bar, keyboard_shortcuts
 
-st.set_page_config(page_title="Receipt — Vaishnavi", layout="wide")
 st.markdown(TALLY_CSS, unsafe_allow_html=True)
-keyboard_shortcuts()
 
 # ── Extra voucher CSS ──────────────────────────────────────────────────────────
 st.markdown("""

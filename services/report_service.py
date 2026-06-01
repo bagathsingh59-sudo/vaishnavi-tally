@@ -67,7 +67,16 @@ def get_dashboard_stats() -> dict:
             "amount": sum(e.get("debit", 0) for e in v.get("entries", []) if e.get("debit", 0) > 0),
         })
 
-    # Monthly collection chart data (last 6 months)
+    # This month payments (sum of CR side in payment vouchers — bank/cash credited)
+    month_pay_agg = list(db.vouchers.aggregate([
+        {"$match": {"voucher_type": "payment", "date": {"$gte": month_start}}},
+        {"$unwind": "$entries"},
+        {"$match": {"entries.credit": {"$gt": 0}}},
+        {"$group": {"_id": None, "total": {"$sum": "$entries.credit"}}},
+    ]))
+    month_payments = month_pay_agg[0]["total"] if month_pay_agg else 0.0
+
+    # Monthly collection chart data (receipts, last 12 months)
     monthly_data = list(db.vouchers.aggregate([
         {"$match": {"voucher_type": "receipt"}},
         {"$unwind": "$entries"},
@@ -77,19 +86,44 @@ def get_dashboard_stats() -> dict:
             "total": {"$sum": "$entries.debit"},
         }},
         {"$sort": {"_id": 1}},
-        {"$limit": 6},
+        {"$limit": 12},
     ]))
+
+    # Monthly payments chart data (last 12 months)
+    monthly_pay = list(db.vouchers.aggregate([
+        {"$match": {"voucher_type": "payment"}},
+        {"$unwind": "$entries"},
+        {"$match": {"entries.credit": {"$gt": 0}}},
+        {"$group": {
+            "_id": {"$dateToString": {"format": "%Y-%m", "date": "$date"}},
+            "total": {"$sum": "$entries.credit"},
+        }},
+        {"$sort": {"_id": 1}},
+        {"$limit": 12},
+    ]))
+
+    # Voucher counts by type
+    type_counts = {}
+    for row in db.vouchers.aggregate([
+        {"$group": {"_id": "$voucher_type", "count": {"$sum": 1}}}
+    ]):
+        type_counts[row["_id"]] = row["count"]
 
     return {
         "month_receipts": month_receipts,
+        "month_payments": month_payments,
         "total_outstanding": total_outstanding,
         "short_pending_count": short_pending,
         "short_pending_amount": short_amount,
         "excess_held": excess_amount,
         "bank_balance": bank_balance,
         "cash_balance": cash_balance,
+        "total_clients": db.clients.count_documents({"is_active": True}),
+        "total_vouchers": db.vouchers.count_documents({}),
         "recent_vouchers": recent_list,
         "monthly_chart": monthly_data,
+        "monthly_payments": monthly_pay,
+        "type_counts": type_counts,
     }
 
 

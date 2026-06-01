@@ -8,9 +8,7 @@ from services.ledger_service import get_bank_ledgers, get_cash_ledgers, get_all_
 from services.voucher_service import create_payment, get_vouchers
 from utils.formatting import fmt_currency, fmt_date, TALLY_CSS, fkey_bar, keyboard_shortcuts
 
-st.set_page_config(page_title="Payment — Vaishnavi", layout="wide")
 st.markdown(TALLY_CSS, unsafe_allow_html=True)
-keyboard_shortcuts()
 
 st.markdown("""
 <style>
