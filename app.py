@@ -43,23 +43,22 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ── Sidebar navigation ─────────────────────────────────────────────────────────
+# ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### 🏠 GATEWAY OF TALLY")
     st.markdown("---")
     st.markdown("**ACCOUNTING VOUCHERS**")
-    st.page_link("pages/3_Receipts.py",  label="F6  Receipt",  icon="💰")
-    st.page_link("pages/4_Payments.py",  label="F5  Payment",  icon="💸")
-    st.page_link("pages/5_Journal.py",   label="F7  Journal",  icon="📓")
-    st.page_link("pages/2_Invoices.py",  label="F3  Invoice",  icon="🧾")
+    st.page_link("pages/2_Receipts.py",  label="F6  Receipt",  icon="💰")
+    st.page_link("pages/3_Payments.py",  label="F5  Payment",  icon="💸")
+    st.page_link("pages/4_Journal.py",   label="F7  Journal",  icon="📓")
     st.markdown("---")
     st.markdown("**MASTER DATA**")
     st.page_link("pages/1_Clients.py",   label="F2  Clients",  icon="👥")
-    st.page_link("pages/6_Ledgers.py",   label="F9  Ledgers",  icon="📒")
+    st.page_link("pages/5_Ledgers.py",   label="F9  Ledgers",  icon="📒")
     st.markdown("---")
     st.markdown("**DISPLAY / REPORTS**")
-    st.page_link("pages/8_DayBook.py",   label="F8  Day Book", icon="📅")
-    st.page_link("pages/7_Reports.py",   label="F12 Reports",  icon="📊")
+    st.page_link("pages/7_DayBook.py",   label="F8  Day Book", icon="📅")
+    st.page_link("pages/6_Reports.py",   label="F12 Reports",  icon="📊")
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 st.markdown('<div class="tally-section">📊 CURRENT STATUS</div>', unsafe_allow_html=True)
@@ -88,45 +87,45 @@ MONGO_URI_PROD = "mongodb+srv://<user>:<password>@cluster.mongodb.net/"
     fkey_bar()
     st.stop()
 
-# ── Metrics row ───────────────────────────────────────────────────────────────
+# ── Metrics ───────────────────────────────────────────────────────────────────
 c1, c2, c3, c4, c5, c6 = st.columns(6)
-c1.metric("Outstanding",        fmt_currency(stats["total_outstanding"]))
-c2.metric("This Month Receipts",fmt_currency(stats["month_receipts"]))
-c3.metric("Bank Balance",       fmt_currency(stats["bank_balance"]))
-c4.metric("Cash in Hand",       fmt_currency(stats["cash_balance"]))
-c5.metric("Short Pending",      fmt_currency(stats["short_pending_amount"]),
+c1.metric("Outstanding",         fmt_currency(stats["total_outstanding"]))
+c2.metric("This Month Receipts", fmt_currency(stats["month_receipts"]))
+c3.metric("Bank Balance",        fmt_currency(stats["bank_balance"]))
+c4.metric("Cash in Hand",        fmt_currency(stats["cash_balance"]))
+c5.metric("Short Pending",       fmt_currency(stats["short_pending_amount"]),
           delta=f"{stats['short_pending_count']} parties", delta_color="inverse")
-c6.metric("Excess Held",        fmt_currency(stats["excess_held"]))
+c6.metric("Excess Held",         fmt_currency(stats["excess_held"]))
 
 st.markdown("---")
 
-# ── Gateway quick-action cards ────────────────────────────────────────────────
+# ── Quick Actions ─────────────────────────────────────────────────────────────
 st.markdown('<div class="tally-section">⚡ QUICK ACTIONS</div>', unsafe_allow_html=True)
 
 qa1, qa2, qa3, qa4 = st.columns(4)
 with qa1:
-    st.markdown('<div class="tally-box"><b>F6 — Receipt Voucher</b><br>'
-                '<small>Record payment from client</small></div>', unsafe_allow_html=True)
-    if st.button("Enter Receipt →", key="qa_rcpt"):
-        st.switch_page("pages/3_Receipts.py")
+    st.markdown('<div class="tally-box"><b>F7 — Journal Voucher</b><br>'
+                '<small>Record client billing entry</small></div>', unsafe_allow_html=True)
+    if st.button("New Journal →", key="qa_jrn"):
+        st.switch_page("pages/4_Journal.py")
 
 with qa2:
-    st.markdown('<div class="tally-box"><b>F5 — Payment Voucher</b><br>'
-                '<small>EPF / ESIC / Expense</small></div>', unsafe_allow_html=True)
-    if st.button("Enter Payment →", key="qa_pay"):
-        st.switch_page("pages/4_Payments.py")
+    st.markdown('<div class="tally-box"><b>F6 — Receipt Voucher</b><br>'
+                '<small>Record payment from client</small></div>', unsafe_allow_html=True)
+    if st.button("New Receipt →", key="qa_rcpt"):
+        st.switch_page("pages/2_Receipts.py")
 
 with qa3:
-    st.markdown('<div class="tally-box"><b>F3 — New Invoice</b><br>'
-                '<small>Raise invoice for client</small></div>', unsafe_allow_html=True)
-    if st.button("New Invoice →", key="qa_inv"):
-        st.switch_page("pages/2_Invoices.py")
+    st.markdown('<div class="tally-box"><b>F5 — Payment Voucher</b><br>'
+                '<small>EPF / ESIC / Expense</small></div>', unsafe_allow_html=True)
+    if st.button("New Payment →", key="qa_pay"):
+        st.switch_page("pages/3_Payments.py")
 
 with qa4:
-    st.markdown('<div class="tally-box"><b>F12 — Reports</b><br>'
-                '<small>Trial Balance / P&L</small></div>', unsafe_allow_html=True)
-    if st.button("View Reports →", key="qa_rep"):
-        st.switch_page("pages/7_Reports.py")
+    st.markdown('<div class="tally-box"><b>F8 — Day Book</b><br>'
+                '<small>View all today\'s entries</small></div>', unsafe_allow_html=True)
+    if st.button("Day Book →", key="qa_db"):
+        st.switch_page("pages/7_DayBook.py")
 
 st.markdown("---")
 
@@ -154,7 +153,7 @@ with col_chart:
         )
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("No collection data yet. Add receipts to see the chart.")
+        st.info("No entries yet. Start with F7 Journal to record your first entry.")
 
 with col_recent:
     st.markdown('<div class="tally-section">🕐 RECENT TRANSACTIONS</div>', unsafe_allow_html=True)

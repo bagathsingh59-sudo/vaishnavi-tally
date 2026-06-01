@@ -8,7 +8,6 @@ from services.client_service import (
     deactivate_client, reactivate_client, search_clients, get_client_outstanding,
 )
 from services.ledger_service import get_ledger_transactions, get_client_ledger
-from services.invoice_service import get_invoices
 from services.report_service import get_short_payments, get_excess_payments
 from utils.formatting import fmt_currency, fmt_date, fmt_month, TALLY_CSS, fkey_bar, keyboard_shortcuts
 
@@ -193,24 +192,18 @@ with tab3:
                 else:
                     st.info("No transactions found for this period.")
 
-            # Invoices
+            # Short / Excess summary for this client
             st.divider()
-            st.markdown("**Invoices**")
-            invoices = get_invoices(client_id=sel_id)
-            if invoices:
-                inv_rows = []
-                for inv in invoices:
-                    inv_rows.append({
-                        "Invoice No": inv.get("invoice_no", ""),
-                        "Month": fmt_month(inv.get("billing_month", "")),
-                        "EPF": fmt_currency(inv.get("epf_amount", 0)),
-                        "ESIC": fmt_currency(inv.get("esic_amount", 0)),
-                        "Prof Fee": fmt_currency(inv.get("professional_fee", 0)),
-                        "Total": fmt_currency(inv.get("total_amount", 0)),
-                        "Paid": fmt_currency(inv.get("paid_amount", 0)),
-                        "Balance": fmt_currency(inv.get("balance_due", 0)),
-                        "Status": inv.get("status", "").upper(),
-                    })
-                st.dataframe(pd.DataFrame(inv_rows), use_container_width=True, hide_index=True)
-            else:
-                st.info("No invoices for this client.")
+            shorts  = [s for s in get_short_payments()  if s.get("client_id") == sel_id]
+            excesses= [e for e in get_excess_payments() if e.get("client_id") == sel_id]
+            if shorts or excesses:
+                st.markdown("**Short / Excess Payment History**")
+                se_rows = []
+                for s in shorts:
+                    se_rows.append({"Type":"SHORT","Month":s.get("billing_month",""),
+                        "Amount":fmt_currency(s.get("difference",0)),"Status":s.get("status","").upper()})
+                for e in excesses:
+                    se_rows.append({"Type":"EXCESS","Month":e.get("billing_month",""),
+                        "Amount":fmt_currency(e.get("difference",0)),"Status":e.get("status","").upper()})
+                if se_rows:
+                    st.dataframe(pd.DataFrame(se_rows), use_container_width=True, hide_index=True)
