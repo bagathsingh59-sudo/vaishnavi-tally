@@ -1,0 +1,48 @@
+# Environment
+.env
+.env.local
+.env.production
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Logs
+*.log
+logs/
+
+# Data / uploads (keep structure, ignore actual files)
+data/uploads/
+data/backups/
+*.csv
+*.pdf
+*.xlsx
+!data/sample_bank_statements/.gitkeep
+
+# MongoDB local data
+mongo_data/
