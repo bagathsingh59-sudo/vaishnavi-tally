@@ -15,7 +15,7 @@
         <option>Cheque</option><option>Cash</option></select></div>
   </div>
   <div class="form-row">
-    <div class="field"><label>Pay To (Expense / Payable) *</label>
+    <div class="field"><label>Pay To (Expense / Payable / Client refund) *</label>
       <select name="expense_ledger_id" class="bal" required>
         {% for e in expenses %}<option value="{{ e.id }}">{{ e.name }}</option>{% endfor %}</select>
       <small class="balhint"></small></div>

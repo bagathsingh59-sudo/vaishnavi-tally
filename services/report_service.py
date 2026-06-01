@@ -217,6 +217,32 @@ def get_profit_loss(from_date: datetime, to_date: datetime) -> dict:
     }
 
 
+def get_client_balances() -> list:
+    """Live per-client running balance from the client ledgers.
+       +Dr  = client owes us (Short / Receivable)
+       -Cr  = we hold their money (Excess / Advance)
+    """
+    from services.client_service import get_all_clients, get_client_outstanding
+    rows = []
+    for c in get_all_clients():
+        bal = get_client_outstanding(c["id"])
+        if bal > 0.01:
+            typ = "short"
+        elif bal < -0.01:
+            typ = "excess"
+        else:
+            typ = "nil"
+        rows.append({
+            "client_id": c["id"],
+            "name": c["name"],
+            "phone": c.get("phone", ""),
+            "balance": abs(bal),
+            "bal_type": "Dr" if bal >= 0 else "Cr",
+            "typ": typ,
+        })
+    return sorted(rows, key=lambda r: -r["balance"])
+
+
 def get_short_payments(status: str = None) -> list:
     db = get_db()
     query = {"type": "short"}

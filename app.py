@@ -221,9 +221,12 @@ def receipts_delete(vid):
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAYMENTS
 # ═══════════════════════════════════════════════════════════════════════════════
-# Groups that can appear on the "Pay To" side of a Payment voucher
+# Groups that can appear on the "Pay To" side of a Payment voucher.
+# sundry_debtor is included so you can REFUND an excess back to a client
+# (DR Client / CR Bank).
 PAYABLE_GROUPS = ["expense", "indirect_expense", "direct_expense",
-                  "epf_payable", "esic_payable", "current_liability", "sundry_creditor"]
+                  "epf_payable", "esic_payable", "current_liability",
+                  "sundry_creditor", "sundry_debtor"]
 
 
 def _expense_ledgers():
@@ -484,14 +487,16 @@ def reports():
         ctx["pl"] = report_svc.get_profit_loss(
             _parse_date(pf), datetime.combine(_parse_date(pt).date(), datetime.max.time()))
         ctx["pf"], ctx["pt"] = pf, pt
-    elif tab == "short":
-        ctx["shorts"] = report_svc.get_short_payments()
-        ctx["total"] = sum(s.get("difference", 0) for s in ctx["shorts"]
-                           if s.get("status") == "pending")
-    elif tab == "excess":
-        ctx["excess"] = report_svc.get_excess_payments()
-        ctx["total"] = sum(e.get("difference", 0) for e in ctx["excess"]
-                           if e.get("status") == "pending")
+    elif tab in ("clients", "short", "excess"):
+        balances = report_svc.get_client_balances()
+        if tab == "short":
+            ctx["rows"] = [b for b in balances if b["typ"] == "short"]
+        elif tab == "excess":
+            ctx["rows"] = [b for b in balances if b["typ"] == "excess"]
+        else:
+            ctx["rows"] = balances
+        ctx["total_short"] = sum(b["balance"] for b in balances if b["typ"] == "short")
+        ctx["total_excess"] = sum(b["balance"] for b in balances if b["typ"] == "excess")
     elif tab == "agewise":
         ctx["agewise"] = report_svc.get_outstanding_agewise()
         ctx["grand"] = sum(a["total"] for a in ctx["agewise"])
