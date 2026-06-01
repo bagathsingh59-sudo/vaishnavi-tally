@@ -155,19 +155,19 @@ def get_trial_balance(as_of_date: datetime = None) -> list:
         total_dr = agg[0]["total_dr"] if agg else 0.0
         total_cr = agg[0]["total_cr"] if agg else 0.0
 
-        closing_dr = ob_dr + total_dr
-        closing_cr = ob_cr + total_cr
-        net = closing_dr - closing_cr
+        # NET balance = (opening + debits) - (opening + credits)
+        net = (ob_dr + total_dr) - (ob_cr + total_cr)
 
         result.append({
+            "ledger_id": str(lid),
             "ledger_name": ledger["name"],
             "group": ledger.get("group", ""),
             "opening_dr": ob_dr,
             "opening_cr": ob_cr,
             "total_dr": total_dr,
             "total_cr": total_cr,
-            "closing_dr": closing_dr if net >= 0 else 0.0,
-            "closing_cr": abs(net) if net < 0 else 0.0,
+            "closing_dr": net if net > 0 else 0.0,
+            "closing_cr": -net if net < 0 else 0.0,
         })
     return result
 

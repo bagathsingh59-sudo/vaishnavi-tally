@@ -20,7 +20,7 @@
     <thead><tr><th>Ledger</th><th>Group</th><th class="num">Closing Dr</th><th class="num">Closing Cr</th></tr></thead>
     <tbody>
     {% for r in tb %}
-      <tr><td>{{ r.ledger_name }}</td><td>{{ r.group }}</td>
+      <tr><td><a href="/ledgers?view={{ r.ledger_id }}">{{ r.ledger_name }}</a></td><td>{{ r.group }}</td>
         <td class="num">{{ r.closing_dr|inr if r.closing_dr else '' }}</td>
         <td class="num">{{ r.closing_cr|inr if r.closing_cr else '' }}</td></tr>
     {% endfor %}
