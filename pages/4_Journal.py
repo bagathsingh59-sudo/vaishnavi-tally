@@ -5,7 +5,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, date
 from services.ledger_service import get_all_ledgers, get_ledger_balance
-from services.voucher_service import create_journal, get_vouchers
+from services.voucher_service import create_journal, get_vouchers, update_journal, delete_voucher
 from utils.formatting import fmt_currency, fmt_date, TALLY_CSS, fkey_bar, keyboard_shortcuts
 
 st.markdown(TALLY_CSS, unsafe_allow_html=True)
@@ -185,5 +185,78 @@ with tab_list:
                     })
                 st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
                 st.caption(f"DR: {fmt_currency(total_dr)}  |  CR: {fmt_currency(total_cr)}")
+
+        # ── Manage (Edit / Delete) ────────────────────────────────────────────
+        st.markdown("---")
+        st.markdown('<div class="tally-section">✏️ MODIFY / DELETE ENTRY</div>',
+                    unsafe_allow_html=True)
+
+        all_ledgers = get_all_ledgers()
+        ledger_names = [l["name"] for l in all_ledgers]
+        ledger_map   = {l["name"]: l["id"] for l in all_ledgers}
+
+        vmap = {f"{v.get('voucher_no','')}  |  {fmt_date(v.get('date'))}  |  "
+                f"{v.get('narration','')[:40]}": v for v in vlist}
+        sel_label = st.selectbox("Select a journal entry to edit or delete",
+                                 list(vmap.keys()), key="jl_sel")
+        sel_v = vmap[sel_label]
+
+        ec1, ec2 = st.columns(2)
+        with ec1:
+            with st.expander("✏️ Edit this Journal Entry", expanded=False):
+                e_date = st.date_input("Date", value=sel_v.get("date").date()
+                                       if hasattr(sel_v.get("date"), "date") else date.today(),
+                                       key="je_date")
+                st.caption("Edit each line. Total Debit must equal Total Credit.")
+                edited = []
+                for idx, ent in enumerate(sel_v.get("entries", [])):
+                    lc1, lc2, lc3 = st.columns([3, 1.3, 1.3])
+                    cur_ln = ent.get("ledger_name", "")
+                    ln = lc1.selectbox("Ledger", ledger_names,
+                                       index=ledger_names.index(cur_ln) if cur_ln in ledger_names else 0,
+                                       key=f"je_l_{idx}", label_visibility="collapsed")
+                    dr = lc2.number_input("Dr", min_value=0.0, value=float(ent.get("debit", 0)),
+                                          step=100.0, key=f"je_d_{idx}", label_visibility="collapsed")
+                    cr = lc3.number_input("Cr", min_value=0.0, value=float(ent.get("credit", 0)),
+                                          step=100.0, key=f"je_c_{idx}", label_visibility="collapsed")
+                    edited.append({"ledger": ln, "debit": dr, "credit": cr})
+
+                td = sum(r["debit"] for r in edited)
+                tc = sum(r["credit"] for r in edited)
+                if abs(td - tc) < 0.01 and td > 0:
+                    st.success(f"Balanced — Dr {fmt_currency(td)} = Cr {fmt_currency(tc)}")
+                else:
+                    st.warning(f"Difference: {fmt_currency(abs(td - tc))}")
+
+                e_narr = st.text_input("Narration", value=sel_v.get("narration", ""), key="je_narr")
+
+                if st.button("💾 Update Journal", type="primary", key="je_save"):
+                    if abs(td - tc) >= 0.01:
+                        st.error("Does not balance. Total Debit must equal Total Credit.")
+                    elif td == 0:
+                        st.error("Amounts cannot be zero.")
+                    else:
+                        try:
+                            update_journal(sel_v["id"], {
+                                "date": datetime.combine(e_date, datetime.min.time()),
+                                "narration": e_narr,
+                                "entries": [{"ledger_id": ledger_map[r["ledger"]],
+                                             "ledger_name": r["ledger"],
+                                             "debit": r["debit"], "credit": r["credit"]}
+                                            for r in edited],
+                            })
+                            st.success("✅ Journal updated!")
+                            st.rerun()
+                        except ValueError as err:
+                            st.error(str(err))
+
+        with ec2:
+            with st.expander("🗑️ Delete this Journal Entry", expanded=False):
+                st.warning(f"This will permanently delete **{sel_v.get('voucher_no','')}**.")
+                confirm = st.checkbox("Yes, I want to delete this entry", key="je_confirm")
+                if st.button("🗑️ Delete Permanently", key="je_del", disabled=not confirm):
+                    delete_voucher(sel_v["id"])
+                    st.success("🗑️ Journal entry deleted.")
+                    st.rerun()
 
 fkey_bar()

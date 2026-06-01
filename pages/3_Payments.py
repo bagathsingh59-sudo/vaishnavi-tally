@@ -5,7 +5,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, date
 from services.ledger_service import get_bank_ledgers, get_cash_ledgers, get_all_ledgers, get_ledger_balance
-from services.voucher_service import create_payment, get_vouchers
+from services.voucher_service import create_payment, get_vouchers, update_payment, delete_voucher
 from utils.formatting import fmt_currency, fmt_date, TALLY_CSS, fkey_bar, keyboard_shortcuts
 
 st.markdown(TALLY_CSS, unsafe_allow_html=True)
@@ -156,5 +156,77 @@ with tab_list:
             })
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
         st.markdown(f"**Total Payments: {fmt_currency(grand)}**")
+
+        # ── Manage (Edit / Delete) ────────────────────────────────────────────
+        st.markdown("---")
+        st.markdown('<div class="tally-section">✏️ MODIFY / DELETE ENTRY</div>',
+                    unsafe_allow_html=True)
+
+        all_banks = get_bank_ledgers() + get_cash_ledgers()
+        all_exp   = (get_all_ledgers("expense") + get_all_ledgers("epf_payable")
+                     + get_all_ledgers("esic_payable") + get_all_ledgers("sundry_creditor"))
+        bank_names = [l["name"] for l in all_banks]
+        exp_names  = [l["name"] for l in all_exp]
+        exp_map    = {l["name"]: l["id"] for l in all_exp}
+        bank_map   = {l["name"]: l["id"] for l in all_banks}
+
+        vmap = {f"{v.get('voucher_no','')}  |  {fmt_date(v.get('date'))}  |  "
+                f"{v.get('narration','')[:30]}  |  "
+                f"{fmt_currency(sum(e.get('credit',0) for e in v.get('entries',[])))}": v
+                for v in vlist}
+        sel_label = st.selectbox("Select a payment to edit or delete", list(vmap.keys()), key="pl_sel")
+        sel_v = vmap[sel_label]
+
+        ec1, ec2 = st.columns(2)
+        with ec1:
+            with st.expander("✏️ Edit this Payment", expanded=False):
+                cur_amt  = sum(e.get("credit", 0) for e in sel_v.get("entries", []))
+                cur_exp  = next((e["ledger_name"] for e in sel_v["entries"] if e.get("debit", 0) > 0),
+                                exp_names[0] if exp_names else "")
+                cur_bank = next((e["ledger_name"] for e in sel_v["entries"] if e.get("credit", 0) > 0),
+                                bank_names[0] if bank_names else "")
+
+                e_date = st.date_input("Date", value=sel_v.get("date").date()
+                                       if hasattr(sel_v.get("date"), "date") else date.today(),
+                                       key="pe_date")
+                e_exp  = st.selectbox("Pay To (Expense / Payable)", exp_names,
+                                      index=exp_names.index(cur_exp) if cur_exp in exp_names else 0,
+                                      key="pe_exp") if exp_names else None
+                e_bank = st.selectbox("Pay From (Bank / Cash)", bank_names,
+                                      index=bank_names.index(cur_bank) if cur_bank in bank_names else 0,
+                                      key="pe_bank")
+                e_amt  = st.number_input("Amount (₹)", min_value=0.0, value=float(cur_amt),
+                                         step=100.0, key="pe_amt")
+                e_ref  = st.text_input("Reference No.", value=sel_v.get("reference_no", ""), key="pe_ref")
+                e_narr = st.text_input("Narration", value=sel_v.get("narration", ""), key="pe_narr")
+
+                if st.button("💾 Update Payment", type="primary", key="pe_save"):
+                    if not e_exp:
+                        st.error("No expense ledger available.")
+                    elif e_amt <= 0:
+                        st.error("Amount must be greater than zero.")
+                    else:
+                        update_payment(sel_v["id"], {
+                            "expense_ledger_id":   exp_map[e_exp],
+                            "expense_ledger_name": e_exp,
+                            "bank_ledger_id":      bank_map[e_bank],
+                            "bank_ledger_name":    e_bank,
+                            "amount":              e_amt,
+                            "date":                datetime.combine(e_date, datetime.min.time()),
+                            "reference_no":        e_ref,
+                            "narration":           e_narr,
+                        })
+                        st.success("✅ Payment updated!")
+                        st.rerun()
+
+        with ec2:
+            with st.expander("🗑️ Delete this Payment", expanded=False):
+                st.warning(f"This will permanently delete **{sel_v.get('voucher_no','')}** "
+                           f"({fmt_currency(sum(e.get('credit',0) for e in sel_v.get('entries',[])))}).")
+                confirm = st.checkbox("Yes, I want to delete this entry", key="pe_confirm")
+                if st.button("🗑️ Delete Permanently", key="pe_del", disabled=not confirm):
+                    delete_voucher(sel_v["id"])
+                    st.success("🗑️ Payment deleted.")
+                    st.rerun()
 
 fkey_bar()

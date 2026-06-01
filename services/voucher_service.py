@@ -181,6 +181,81 @@ def get_voucher(voucher_id: str) -> dict | None:
 
 
 def delete_voucher(voucher_id: str) -> bool:
+    """Delete a voucher and any short/excess tracker records linked to it."""
     db = get_db()
+    db.short_excess_tracker.delete_many({"voucher_id": ObjectId(voucher_id)})
     result = db.vouchers.delete_one({"_id": ObjectId(voucher_id)})
     return result.deleted_count > 0
+
+
+def update_receipt(voucher_id: str, data: dict) -> bool:
+    """Update an existing receipt voucher in place (keeps voucher_no)."""
+    db = get_db()
+    amount = float(data["amount"])
+    client_ledger = get_client_ledger(data["client_id"])
+    if not client_ledger:
+        raise ValueError("Client ledger not found")
+    client = db.clients.find_one({"_id": ObjectId(data["client_id"])}, {"name": 1})
+    client_name = client["name"] if client else "Client"
+
+    result = db.vouchers.update_one(
+        {"_id": ObjectId(voucher_id)},
+        {"$set": {
+            "date": data["date"],
+            "narration": data.get("narration", f"Receipt from {client_name}"),
+            "client_id": ObjectId(data["client_id"]),
+            "payment_mode": data.get("payment_mode", "bank_transfer"),
+            "reference_no": data.get("reference_no", ""),
+            "entries": [
+                {"ledger_id": ObjectId(data["bank_ledger_id"]),
+                 "ledger_name": data.get("bank_ledger_name", "Bank"),
+                 "debit": amount, "credit": 0.0},
+                {"ledger_id": ObjectId(client_ledger["id"]),
+                 "ledger_name": client_name, "debit": 0.0, "credit": amount},
+            ],
+            "updated_at": datetime.utcnow(),
+        }},
+    )
+    return result.modified_count > 0
+
+
+def update_payment(voucher_id: str, data: dict) -> bool:
+    db = get_db()
+    amount = float(data["amount"])
+    result = db.vouchers.update_one(
+        {"_id": ObjectId(voucher_id)},
+        {"$set": {
+            "date": data["date"],
+            "narration": data.get("narration", "Payment"),
+            "reference_no": data.get("reference_no", ""),
+            "entries": [
+                {"ledger_id": ObjectId(data["expense_ledger_id"]),
+                 "ledger_name": data.get("expense_ledger_name", "Expense"),
+                 "debit": amount, "credit": 0.0},
+                {"ledger_id": ObjectId(data["bank_ledger_id"]),
+                 "ledger_name": data.get("bank_ledger_name", "Bank"),
+                 "debit": 0.0, "credit": amount},
+            ],
+            "updated_at": datetime.utcnow(),
+        }},
+    )
+    return result.modified_count > 0
+
+
+def update_journal(voucher_id: str, data: dict) -> bool:
+    db = get_db()
+    entries = _build_entries(data["entries"])
+    total_dr = sum(e["debit"] for e in entries)
+    total_cr = sum(e["credit"] for e in entries)
+    if abs(total_dr - total_cr) > 0.01:
+        raise ValueError(f"Journal entries do not balance: DR={total_dr:.2f}, CR={total_cr:.2f}")
+    result = db.vouchers.update_one(
+        {"_id": ObjectId(voucher_id)},
+        {"$set": {
+            "date": data["date"],
+            "narration": data.get("narration", ""),
+            "entries": entries,
+            "updated_at": datetime.utcnow(),
+        }},
+    )
+    return result.modified_count > 0

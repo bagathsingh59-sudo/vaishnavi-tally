@@ -6,7 +6,12 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
 
-from services.report_service import get_dashboard_stats
+from datetime import date
+from services.report_service import (
+    get_dashboard_stats, get_short_payments, get_excess_payments, get_outstanding_agewise,
+)
+from services.voucher_service import get_vouchers
+from services.ledger_service import get_all_ledgers, get_ledger_balance
 from utils.formatting import fmt_currency, fmt_date, fmt_month, TALLY_CSS, fkey_bar
 
 st.markdown(TALLY_CSS, unsafe_allow_html=True)
@@ -70,6 +75,60 @@ m3.metric("💹 Net Cash Flow", fmt_currency(net_flow),
           delta_color="normal" if net_flow >= 0 else "inverse")
 m4.metric("🔴 Short / 🟢 Excess",
           f"{fmt_currency(stats['short_pending_amount'])} / {fmt_currency(stats['excess_held'])}")
+
+# ── Drill-down: click to expand the entries behind each number ─────────────────
+st.markdown('<div class="tally-section">🔍 CLICK TO VIEW DETAILS</div>', unsafe_allow_html=True)
+d1, d2, d3 = st.columns(3)
+
+with d1:
+    with st.expander(f"🏦 Funds Breakdown — {fmt_currency(liquid)}"):
+        rows = []
+        for l in get_all_ledgers("bank") + get_all_ledgers("cash"):
+            bal = get_ledger_balance(l["id"])
+            rows.append({"Ledger": l["name"],
+                         "Balance": fmt_currency(abs(bal)),
+                         "Type": "Dr" if bal >= 0 else "Cr"})
+        if rows:
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+            if st.button("Open Ledgers →", key="dd_led"):
+                st.switch_page("pages/5_Ledgers.py")
+        else:
+            st.caption("No bank/cash ledgers yet.")
+
+with d2:
+    with st.expander(f"📊 Outstanding (Receivable) — {fmt_currency(stats['total_outstanding'])}"):
+        agewise = get_outstanding_agewise()
+        if agewise:
+            rows = [{"Client": a["client_name"], "Total Due": fmt_currency(a["total"])}
+                    for a in agewise if a["total"] > 0]
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        else:
+            st.caption("No outstanding balances.")
+        shorts = get_short_payments(status="pending")
+        if shorts:
+            st.markdown("**Short Payments (pending)**")
+            st.dataframe(pd.DataFrame([
+                {"Client": s["client_name"], "Month": fmt_month(s.get("billing_month", "")),
+                 "Short By": fmt_currency(s.get("difference", 0))} for s in shorts
+            ]), use_container_width=True, hide_index=True)
+
+with d3:
+    with st.expander(f"⬆️ This Month's Receipts — {fmt_currency(stats['month_receipts'])}"):
+        today = datetime.today()
+        mstart = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        recs = get_vouchers(voucher_type="receipt",
+                            from_date=mstart, to_date=datetime.now())
+        if recs:
+            st.dataframe(pd.DataFrame([
+                {"Date": fmt_date(v.get("date")), "Voucher": v.get("voucher_no", ""),
+                 "Party": v.get("client_name", ""),
+                 "Amount": fmt_currency(sum(e.get("debit", 0) for e in v.get("entries", [])))}
+                for v in recs
+            ]), use_container_width=True, hide_index=True)
+            if st.button("Open Day Book →", key="dd_db"):
+                st.switch_page("pages/7_DayBook.py")
+        else:
+            st.caption("No receipts recorded this month.")
 
 st.markdown("---")
 

@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import datetime, date
 from services.client_service import get_all_clients
 from services.ledger_service import get_bank_ledgers, get_cash_ledgers, get_ledger_balance
-from services.voucher_service import create_receipt, get_vouchers
+from services.voucher_service import create_receipt, get_vouchers, update_receipt, delete_voucher
 from services.counter_service import get_next_number
 from utils.formatting import fmt_currency, fmt_date, TALLY_CSS, fkey_bar, keyboard_shortcuts
 
@@ -210,5 +210,71 @@ with tab_list:
             })
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
         st.markdown(f"**Total Receipts: {fmt_currency(grand)}** &nbsp;|&nbsp; {len(rows)} entries")
+
+        # ── Manage (Edit / Delete) ────────────────────────────────────────────
+        st.markdown("---")
+        st.markdown('<div class="tally-section">✏️ MODIFY / DELETE ENTRY</div>',
+                    unsafe_allow_html=True)
+
+        vmap = {f"{v.get('voucher_no','')}  |  {fmt_date(v.get('date'))}  |  "
+                f"{v.get('client_name','')}  |  "
+                f"{fmt_currency(sum(e.get('debit',0) for e in v.get('entries',[])))}": v
+                for v in vlist}
+        sel_label = st.selectbox("Select a receipt to edit or delete", list(vmap.keys()), key="rl_sel")
+        sel_v = vmap[sel_label]
+
+        ec1, ec2 = st.columns(2)
+
+        # ── Edit form ─────────────────────────────────────────────────────────
+        with ec1:
+            with st.expander("✏️ Edit this Receipt", expanded=False):
+                cur_amt = sum(e.get("debit", 0) for e in sel_v.get("entries", []))
+                cur_party = sel_v.get("client_name", clients[0]["name"])
+                cur_bank = next((e["ledger_name"] for e in sel_v["entries"] if e.get("debit", 0) > 0),
+                                bank_list[0]["name"])
+
+                e_date = st.date_input("Date", value=sel_v.get("date").date()
+                                       if hasattr(sel_v.get("date"), "date") else date.today(),
+                                       key="re_date")
+                e_party = st.selectbox("Party", [c["name"] for c in clients],
+                                       index=[c["name"] for c in clients].index(cur_party)
+                                       if cur_party in [c["name"] for c in clients] else 0,
+                                       key="re_party")
+                e_bank = st.selectbox("Received In", [l["name"] for l in bank_list],
+                                      index=[l["name"] for l in bank_list].index(cur_bank)
+                                      if cur_bank in [l["name"] for l in bank_list] else 0,
+                                      key="re_bank")
+                e_amt = st.number_input("Amount (₹)", min_value=0.0, value=float(cur_amt),
+                                        step=100.0, key="re_amt")
+                e_ref = st.text_input("Reference No.", value=sel_v.get("reference_no", ""), key="re_ref")
+                e_narr = st.text_input("Narration", value=sel_v.get("narration", ""), key="re_narr")
+
+                if st.button("💾 Update Receipt", type="primary", key="re_save"):
+                    if e_amt <= 0:
+                        st.error("Amount must be greater than zero.")
+                    else:
+                        bank_obj = next(l for l in bank_list if l["name"] == e_bank)
+                        update_receipt(sel_v["id"], {
+                            "client_id":        client_map[e_party],
+                            "date":             datetime.combine(e_date, datetime.min.time()),
+                            "amount":           e_amt,
+                            "reference_no":     e_ref,
+                            "narration":        e_narr,
+                            "bank_ledger_id":   bank_obj["id"],
+                            "bank_ledger_name": bank_obj["name"],
+                        })
+                        st.success("✅ Receipt updated!")
+                        st.rerun()
+
+        # ── Delete ────────────────────────────────────────────────────────────
+        with ec2:
+            with st.expander("🗑️ Delete this Receipt", expanded=False):
+                st.warning(f"This will permanently delete **{sel_v.get('voucher_no','')}** "
+                           f"({fmt_currency(sum(e.get('debit',0) for e in sel_v.get('entries',[])))}).")
+                confirm = st.checkbox("Yes, I want to delete this entry", key="re_confirm")
+                if st.button("🗑️ Delete Permanently", key="re_del", disabled=not confirm):
+                    delete_voucher(sel_v["id"])
+                    st.success("🗑️ Receipt deleted.")
+                    st.rerun()
 
 fkey_bar()

@@ -106,4 +106,24 @@ s_rows = [{"Type": k, "Count": v["count"], "Amount": fmt_currency(v["amount"])}
           for k, v in summary_rows.items()]
 st.dataframe(pd.DataFrame(s_rows), use_container_width=False, hide_index=True)
 
+# ── Quick delete from Day Book ────────────────────────────────────────────────
+st.markdown("---")
+st.markdown('<div class="tally-section">🗑️ DELETE A WRONG ENTRY</div>', unsafe_allow_html=True)
+st.caption("To edit an entry, open its voucher page (Receipt / Payment / Journal). "
+           "You can delete any entry directly here.")
+
+from services.voucher_service import delete_voucher
+
+vmap = {f"{v.get('voucher_no','')}  |  {fmt_date(v.get('date'))}  |  "
+        f"{v.get('voucher_type','').title()}  |  {v.get('client_name','') or v.get('narration','')[:30]}  |  "
+        f"{fmt_currency(max(sum(e.get('debit',0) for e in v.get('entries',[])), sum(e.get('credit',0) for e in v.get('entries',[]))))}": v
+        for v in vouchers}
+sel_label = st.selectbox("Select an entry to delete", list(vmap.keys()), key="db_del_sel")
+sel_v = vmap[sel_label]
+confirm = st.checkbox("Yes, permanently delete this entry", key="db_confirm")
+if st.button("🗑️ Delete Permanently", key="db_del", disabled=not confirm):
+    delete_voucher(sel_v["id"])
+    st.success(f"🗑️ Deleted {sel_v.get('voucher_no','')}.")
+    st.rerun()
+
 fkey_bar()
