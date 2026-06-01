@@ -268,10 +268,10 @@ hr { border-color: #002B5C !important; border-width: 1px !important; }
 FKEYS = [
     ("F1",  "Home",     "/app"),
     ("F2",  "Clients",  "/Clients"),
-    ("F3",  "Invoices", "/Invoices"),
     ("F5",  "Payment",  "/Payments"),
     ("F6",  "Receipt",  "/Receipts"),
     ("F7",  "Journal",  "/Journal"),
+    ("F8",  "Day Book", "/DayBook"),
     ("F9",  "Ledgers",  "/Ledgers"),
     ("F12", "Reports",  "/Reports"),
 ]
@@ -340,6 +340,7 @@ def keyboard_shortcuts():
             if (path) {
                 e.preventDefault();
                 showToast(e.key + ' → ' + (labels[e.key] || ''));
+                // Streamlit Cloud paths are lowercase page names
                 setTimeout(() => { window.parent.location.pathname = path; }, 200);
             }
         }, true);

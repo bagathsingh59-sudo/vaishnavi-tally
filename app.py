@@ -58,6 +58,7 @@ with st.sidebar:
     st.page_link("pages/6_Ledgers.py",   label="F9  Ledgers",  icon="📒")
     st.markdown("---")
     st.markdown("**DISPLAY / REPORTS**")
+    st.page_link("pages/8_DayBook.py",   label="F8  Day Book", icon="📅")
     st.page_link("pages/7_Reports.py",   label="F12 Reports",  icon="📊")
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
