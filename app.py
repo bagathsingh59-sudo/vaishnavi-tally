@@ -20,10 +20,19 @@ st.set_page_config(
 )
 
 st.markdown(TALLY_CSS, unsafe_allow_html=True)
-ensure_indexes()
+
+# Indexes are best-effort — do NOT let a missing DB crash the process before
+# Streamlit's HTTP server even binds to its port.
+try:
+    ensure_indexes()
+except Exception:
+    pass
 
 # ── Header ────────────────────────────────────────────────────────────────────
-firm = os.getenv("FIRM_NAME", "Vaishnavi Consultants")
+try:
+    firm = st.secrets.get("FIRM_NAME", os.getenv("FIRM_NAME", "Vaishnavi Consultants"))
+except Exception:
+    firm = os.getenv("FIRM_NAME", "Vaishnavi Consultants")
 st.markdown(
     f'<div class="tally-header">💼 {firm} — Workstation &nbsp;|&nbsp; '
     f'{datetime.today().strftime("%d %b %Y")}</div>',
@@ -39,8 +48,26 @@ st.subheader("Dashboard")
 try:
     stats = get_dashboard_stats()
 except Exception as e:
-    st.error(f"Could not connect to database. Please check your .env file.\n\n{e}")
-    st.info("Copy `.env.example` to `.env` and set your MongoDB URI, then run: `python scripts/seed_data.py`")
+    st.error("⚠️ Cannot connect to MongoDB. The database is not configured yet.")
+    st.markdown("""
+**To fix this, add your MongoDB Atlas URI in Streamlit Cloud secrets:**
+
+1. Go to your app → **⋮ menu → Settings → Secrets**
+2. Paste the following (replace the URI with your Atlas connection string):
+
+```toml
+ENV = "production"
+DB_NAME = "vaishnavi_tally"
+FIRM_NAME = "Vaishnavi Consultants"
+MONGO_URI_PROD = "mongodb+srv://<user>:<password>@cluster.mongodb.net/"
+```
+
+3. Click **Save** — the app will reboot automatically.
+
+> Get a free Atlas cluster at [cloud.mongodb.com](https://cloud.mongodb.com)
+""")
+    with st.expander("Technical error details"):
+        st.code(str(e))
     st.stop()
 
 col1, col2, col3, col4 = st.columns(4)
