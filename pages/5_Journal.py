@@ -28,7 +28,7 @@ with tab1:
     ledger_map = {l["name"]: l["id"] for l in all_ledgers}
 
     jrn_date = st.date_input("Journal Date *", value=date.today())
-    narration = st.text_area("Narration *", height=60)
+    narration = st.text_area("Narration *", height=80)
 
     st.markdown("**Journal Entries**")
     st.caption("Add rows below. Each row is one ledger line.")

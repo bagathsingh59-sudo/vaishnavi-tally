@@ -42,9 +42,9 @@ with tab1:
 
     with st.form("payment_form", clear_on_submit=True):
         fc1, fc2 = st.columns(2)
-        amount = fc1.number_input("Amount (₹) *", min_value=1.0, value=0.0, step=100.0)
+        amount = fc1.number_input("Amount (₹) *", min_value=0.0, value=0.0, step=100.0)
         reference = fc2.text_input("Reference No (UTR / Cheque No)")
-        narration = st.text_area("Narration / Purpose", height=60)
+        narration = st.text_area("Narration / Purpose", height=80)
 
         submitted = st.form_submit_button("💾 Save Payment", type="primary")
         if submitted:

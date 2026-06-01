@@ -70,7 +70,7 @@ with tab1:
 
     with st.form("receipt_form", clear_on_submit=True):
         fc1, fc2 = st.columns(2)
-        amount = fc1.number_input("Amount Received (₹) *", min_value=1.0, value=0.0, step=100.0)
+        amount = fc1.number_input("Amount Received (₹) *", min_value=0.0, value=0.0, step=100.0)
         reference = fc2.text_input("Reference No (UTR / Cheque No)")
         narration = st.text_area(
             "Narration",

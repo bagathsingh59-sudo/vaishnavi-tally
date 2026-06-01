@@ -151,8 +151,10 @@ div[data-testid="metric-container"] label { color: #002B5C !important; font-weig
     background: #FFFDE7 !important;
 }
 
-/* ── Buttons ── */
-.stButton > button {
+/* ── Buttons — all variants ── */
+.stButton button,
+.stButton > button,
+div.stButton button {
     border-radius: 2px !important;
     background: #002B5C !important;
     color: #FFD700 !important;
@@ -160,36 +162,50 @@ div[data-testid="metric-container"] label { color: #002B5C !important; font-weig
     font-weight: 700 !important;
     font-size: 12px !important;
     letter-spacing: 0.5px;
-    padding: 4px 20px !important;
-    transition: all 0.1s;
+    padding: 5px 20px !important;
+    transition: background 0.1s, color 0.1s;
 }
+.stButton button:hover,
 .stButton > button:hover {
     background: #FFD700 !important;
     color: #002B5C !important;
+    border-color: #002B5C !important;
 }
-.stButton > button[kind="primary"] {
+/* Primary button — gold background */
+button[kind="primary"],
+.stButton button[kind="primary"] {
     background: #FFD700 !important;
     color: #002B5C !important;
-    border: 1px solid #002B5C !important;
+    border: 2px solid #002B5C !important;
+    font-size: 13px !important;
 }
-.stButton > button[kind="primary"]:hover {
+button[kind="primary"]:hover,
+.stButton button[kind="primary"]:hover {
     background: #FFC200 !important;
 }
 
-/* ── Tabs ── */
-div[data-testid="stTabs"] button {
-    background: #E8EAF0 !important;
+/* ── Tabs — Streamlit 1.45 data-testid selectors ── */
+button[data-testid="stTab"] {
+    background: #DCE3F0 !important;
     color: #002B5C !important;
     border-radius: 0 !important;
     font-weight: 600 !important;
     font-size: 12px !important;
-    border: 1px solid #AAAAAA !important;
-    border-bottom: none !important;
+    border: 1px solid #AAAACC !important;
+    border-bottom: 2px solid transparent !important;
+    padding: 6px 18px !important;
+    margin-right: 2px !important;
 }
-div[data-testid="stTabs"] button[aria-selected="true"] {
+button[data-testid="stTab"]:hover {
+    background: #003580 !important;
+    color: #FFD700 !important;
+}
+button[data-testid="stTab"][aria-selected="true"] {
     background: #002B5C !important;
     color: #FFD700 !important;
-    border-color: #FFD700 !important;
+    border-color: #002B5C !important;
+    border-bottom: 2px solid #FFD700 !important;
+    font-weight: 700 !important;
 }
 
 /* ── Alerts ── */
