@@ -87,3 +87,38 @@ function recalcJournal() {
 document.addEventListener("input", function (e) {
   if (e.target.name === "debit[]" || e.target.name === "credit[]") recalcJournal();
 });
+
+// ── Auto-balance a journal row: fill this line so total Dr = total Cr ──
+async function balanceRow(btn) {
+  const tr = btn.closest("tr");
+  let otherDr = 0, otherCr = 0;
+  document.querySelectorAll('#jrnTable input[name="debit[]"]').forEach((i) => {
+    if (!tr.contains(i)) otherDr += parseFloat(i.value || 0);
+  });
+  document.querySelectorAll('#jrnTable input[name="credit[]"]').forEach((i) => {
+    if (!tr.contains(i)) otherCr += parseFloat(i.value || 0);
+  });
+  const drIn = tr.querySelector('input[name="debit[]"]');
+  const crIn = tr.querySelector('input[name="credit[]"]');
+  const diff = otherCr - otherDr; // >0 => this row needs a debit
+  let thisDr = 0, thisCr = 0;
+  if (diff >= 0) { thisDr = diff; drIn.value = diff ? diff.toFixed(2) : ""; crIn.value = ""; }
+  else { thisCr = -diff; crIn.value = (-diff).toFixed(2); drIn.value = ""; }
+  recalcJournal();
+
+  // Show the projected balance for this ledger after the entry
+  const sel = tr.querySelector("select.bal");
+  const hint = tr.querySelector(".balhint");
+  if (sel && sel.value && hint) {
+    try {
+      const r = await fetch("/api/ledger/" + sel.value + "/balance");
+      const d = await r.json();
+      const cur = d.type === "Dr" ? d.balance : -d.balance;
+      const proj = cur + thisDr - thisCr;
+      const amt = "₹" + Math.abs(proj).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+      if (Math.abs(proj) < 0.01) { hint.textContent = "After this: settled (₹0.00)"; hint.style.color = "#1e8e3e"; }
+      else if (proj < 0) { hint.textContent = "After this: " + amt + " Cr (excess held)"; hint.style.color = "#1e8e3e"; }
+      else { hint.textContent = "After this: " + amt + " Dr (receivable)"; hint.style.color = "#d33"; }
+    } catch (e) {}
+  }
+}

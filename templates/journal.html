@@ -19,7 +19,11 @@
         </select><small class="balhint"></small></td>
         <td><input type="number" step="0.01" name="debit[]" class="num" style="width:100%"></td>
         <td><input type="number" step="0.01" name="credit[]" class="num" style="width:100%"></td>
-        <td><button type="button" class="btn sm danger" onclick="removeRow(this)">✕</button></td>
+        <td style="white-space:nowrap">
+          <button type="button" class="btn sm ghost" onclick="balanceRow(this)"
+            title="Auto-balance: fill this line so total Debit = total Credit">⚖</button>
+          <button type="button" class="btn sm danger" onclick="removeRow(this)">✕</button>
+        </td>
       </tr>
       <tr>
         <td><select name="ledger_id[]" class="bal">
@@ -28,12 +32,19 @@
         </select><small class="balhint"></small></td>
         <td><input type="number" step="0.01" name="debit[]" class="num" style="width:100%"></td>
         <td><input type="number" step="0.01" name="credit[]" class="num" style="width:100%"></td>
-        <td><button type="button" class="btn sm danger" onclick="removeRow(this)">✕</button></td>
+        <td style="white-space:nowrap">
+          <button type="button" class="btn sm ghost" onclick="balanceRow(this)"
+            title="Auto-balance: fill this line so total Debit = total Credit">⚖</button>
+          <button type="button" class="btn sm danger" onclick="removeRow(this)">✕</button>
+        </td>
       </tr>
     </tbody>
   </table>
   <p><button type="button" class="btn sm" onclick="addRow('jrnTable')">＋ Add Row</button>
      <span id="jrn-balance" style="margin-left:14px;font-weight:700"></span></p>
+  <p class="muted" style="font-size:12px">💡 Enter the charge lines (EPF, ESIC, Fees, Other) first, then click
+     <b>⚖</b> on the client's row — it auto-fills the client's debit to balance the entry,
+     and shows how much excess/receivable will remain in that client's ledger.</p>
   <div class="form-row">
     <div class="field"><label>Narration *</label>
       <input name="narration" placeholder="e.g. EPF & ESIC for May 2025 — SM Brother Contractor" required></div>
