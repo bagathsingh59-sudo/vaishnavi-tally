@@ -20,7 +20,8 @@
 <div class="cards">
   <div class="card"><div class="lbl">Total Receipts</div><div class="val cr">{{ rcpt_total|inr }}</div></div>
   <div class="card"><div class="lbl">Total Payments</div><div class="val dr">{{ pay_total|inr }}</div></div>
-  <div class="card"><div class="lbl">Net Cash Flow</div><div class="val">{{ (rcpt_total-pay_total)|inr }}</div></div>
+  <div class="card"><div class="lbl">Net Cash Flow</div>
+    <div class="val" style="color:{{ '#1e8e3e' if (rcpt_total-pay_total)>=0 else '#d33' }}">{{ (rcpt_total-pay_total)|inr }}</div></div>
   <div class="card"><div class="lbl">Vouchers</div><div class="val">{{ vouchers|length }}</div></div>
 </div>
 
