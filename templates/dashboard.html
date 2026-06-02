@@ -8,11 +8,14 @@
 <div class="cards">
   <a class="card click" href="/ledgers">
     <div class="lbl">💰 Total Liquid Funds</div>
-    <div class="val">{{ liquid|inr }}</div><div class="sub">Bank + Cash on hand</div></a>
+    <div class="val" style="color:{{ '#1e8e3e' if liquid>=0 else '#d33' }}">{{ liquid|inr }}</div>
+    <div class="sub">Bank + Cash on hand</div></a>
   <a class="card click" href="/ledgers">
-    <div class="lbl">🏦 Bank Balance</div><div class="val">{{ s.bank_balance|inr }}</div></a>
+    <div class="lbl">🏦 Bank Balance</div>
+    <div class="val" style="color:{{ '#1e8e3e' if s.bank_balance>=0 else '#d33' }}">{{ s.bank_balance|inr }}</div></a>
   <a class="card click" href="/ledgers">
-    <div class="lbl">💵 Cash in Hand</div><div class="val">{{ s.cash_balance|inr }}</div></a>
+    <div class="lbl">💵 Cash in Hand</div>
+    <div class="val" style="color:{{ '#1e8e3e' if s.cash_balance>=0 else '#d33' }}">{{ s.cash_balance|inr }}</div></a>
   <a class="card click" href="/reports?tab=trial">
     <div class="lbl">🏛️ Govt Dues Pending</div>
     <div class="val" style="color:{{ '#d33' if s.govt_pending > 0 else '#1e8e3e' }}">{{ s.govt_pending|inr }}</div>

@@ -2,6 +2,17 @@
 {% block heading %}— LEDGERS (F9){% endblock %}
 {% block content %}
 
+{# Colour by account nature:
+   bank/cash  → Dr (funds) green, Cr (overdraft) red
+   debtor     → Dr (short)  red,  Cr (excess)    green
+   others     → black #}
+{% macro balcolor(group, bal) -%}
+{%- if bal|abs < 0.01 -%}#000
+{%- elif group == 'sundry_debtor' -%}{{ '#d33' if bal > 0 else '#1e8e3e' }}
+{%- elif group in ['bank','cash','current_asset'] -%}{{ '#1e8e3e' if bal > 0 else '#d33' }}
+{%- else -%}#000{%- endif -%}
+{%- endmacro %}
+
 <div class="section">➕ Add Ledger</div>
 <form class="panel" method="post" action="/ledgers/add" data-primary>
   <div class="form-row">
@@ -26,7 +37,8 @@
   {% for l in ledgers %}
     <tr><td>{{ l.name }}</td><td>{{ groups.get(l.group, l.group) }}</td>
       <td class="num">{{ l.opening_balance|inr }} {{ l.opening_balance_type|upper }}</td>
-      <td class="num">{{ l.balance|abs|inr }} {{ 'Dr' if l.balance>=0 else 'Cr' }}</td>
+      <td class="num" style="color:{{ balcolor(l.group, l.balance) }};font-weight:600">
+        {{ l.balance|abs|inr }} {{ 'Dr' if l.balance>=0 else 'Cr' }}</td>
       <td><a class="btn sm" href="/ledgers?view={{ l.id }}">View Statement</a></td></tr>
   {% else %}<tr><td colspan="5" class="muted">No ledgers yet.</td></tr>{% endfor %}
   </tbody>
@@ -46,7 +58,7 @@
       <td class="num">{{ t.balance|inr }} {{ t.balance_type }}</td></tr>
   {% else %}<tr><td colspan="7" class="muted">No transactions.</td></tr>{% endfor %}
     <tr class="totalrow"><td colspan="6">Closing Balance</td>
-      <td class="num">{{ closing|abs|inr }} {{ 'Dr' if closing>=0 else 'Cr' }}</td></tr>
+      <td class="num" style="color:{{ balcolor(sel.group, closing) }}">{{ closing|abs|inr }} {{ 'Dr' if closing>=0 else 'Cr' }}</td></tr>
   </tbody>
 </table>
 {% endif %}
