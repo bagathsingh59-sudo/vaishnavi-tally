@@ -10,6 +10,32 @@
   <div class="card"><div class="lbl">Short / Excess</div><div class="val">{{ counts.short_excess }}</div></div>
 </div>
 
+<div class="section">💾 Backup & Audit (Share with your CA)</div>
+<div class="grid2">
+  <div class="panel">
+    <h3>📦 Backup (full data)</h3>
+    <p>Downloads a single <b>.json</b> file containing <em>all</em> your data (clients,
+       ledgers, vouchers). Keep it safe — it's your complete restore copy. Do this
+       weekly or before any big change.</p>
+    <a class="btn primary" href="/settings/backup">⬇️ Download Backup (.json)</a>
+  </div>
+  <div class="panel">
+    <h3>🧾 Export for CA / Audit</h3>
+    <p>Downloads a <b>.zip</b> of Excel-readable CSV files your Chartered Accountant
+       needs to audit the books & file returns:</p>
+    <ul style="font-size:12.5px;color:#555;margin:6px 0">
+      <li>Trial Balance</li><li>Day Book (all entries)</li>
+      <li>Profit &amp; Loss</li><li>Ledger list with balances</li>
+      <li>Client balances</li>
+    </ul>
+    <a class="btn primary" href="/settings/export-ca">⬇️ Download Audit Pack (.zip)</a>
+  </div>
+</div>
+<p class="muted" style="font-size:12.5px">💡 <b>What is a CA audit?</b> At year-end (or quarterly),
+   a Chartered Accountant reviews your books to confirm everything is recorded correctly and to
+   file your income-tax return. They need the Trial Balance, Profit &amp; Loss and the list of all
+   transactions (Day Book) — exactly what the Audit Pack gives. Just email them the .zip.</p>
+
 <div class="section">🚀 Quick Setup — Create Standard Ledgers + Sample Client</div>
 <div class="panel">
   <p>One click creates your standard chart of accounts and a sample client so you can

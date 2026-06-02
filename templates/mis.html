@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block heading %}— MIS REPORT (F4){% endblock %}
+{% block content %}
+
+<p class="muted" style="margin-top:4px">📋 <b>MIS = Management Information System</b> — your quick
+   business health check: what came in, what you earned, who to follow up, and what needs attention.</p>
+
+{# ── Period selector ── #}
+<div class="tabs">
+  <a href="/mis?period=week"  class="{{ 'active' if period=='week' }}">📆 This Week</a>
+  <a href="/mis?period=month" class="{{ 'active' if period=='month' }}">🗓️ This Month</a>
+  <a href="/mis?period=fy"    class="{{ 'active' if period=='fy' }}">📅 This Year</a>
+</div>
+<form method="get" action="/mis" style="margin:10px 0">
+  <input type="hidden" name="period" value="custom">
+  Custom: <input type="date" name="from" value="{{ from_s }}">
+  to <input type="date" name="to" value="{{ to_s }}">
+  <button class="btn sm" type="submit">Show</button>
+  <span class="muted" style="margin-left:10px">Showing: {{ from_s }} → {{ to_s }}</span>
+</form>
+
+{# ── Focus / Action items ── #}
+<div class="section">🎯 Where to Focus</div>
+<ul class="action-list">
+  {% for icon, text in m.actions %}
+    <li>{{ icon }} &nbsp; {{ text }}</li>
+  {% endfor %}
+</ul>
+
+{# ── Period summary ── #}
+<div class="section">💼 This Period — Summary</div>
+<div class="cards">
+  <div class="card"><div class="lbl">⬆️ Money In (Receipts)</div><div class="val cr">{{ m.receipts|inr }}</div></div>
+  <div class="card"><div class="lbl">⬇️ Money Out (Payments)</div><div class="val dr">{{ m.payments|inr }}</div></div>
+  <div class="card"><div class="lbl">💹 Net Cash Flow</div>
+    <div class="val" style="color:{{ '#1e8e3e' if m.net_cash>=0 else '#d33' }}">{{ m.net_cash|inr }}</div></div>
+  <div class="card" style="border-top-color:#1e8e3e"><div class="lbl">📈 Income Earned</div>
+    <div class="val" style="color:#1e8e3e">{{ m.total_income|inr }}</div></div>
+  <div class="card" style="border-top-color:#0a66c2"><div class="lbl">🏆 Net Profit</div>
+    <div class="val" style="color:{{ '#1e8e3e' if m.net_profit>=0 else '#d33' }}">{{ m.net_profit|inr }}</div></div>
+</div>
+
+{# ── Activity counts ── #}
+<div class="section">🧾 Entries Made This Period</div>
+<div class="cards">
+  <div class="card"><div class="lbl">Receipts</div><div class="val">{{ m.vcount.get('receipt', 0) }}</div></div>
+  <div class="card"><div class="lbl">Payments</div><div class="val">{{ m.vcount.get('payment', 0) }}</div></div>
+  <div class="card"><div class="lbl">Journals</div><div class="val">{{ m.vcount.get('journal', 0) }}</div></div>
+  <div class="card" style="border-top-color:#d33"><div class="lbl">🏛️ Govt Dues Pending</div>
+    <div class="val" style="color:{{ '#d33' if m.govt_pending>0 else '#1e8e3e' }}">{{ m.govt_pending|inr }}</div>
+    <div class="sub">EPF + ESIC to remit</div></div>
+</div>
+
+<div class="grid2">
+  {# ── Top clients ── #}
+  <div>
+    <div class="section">🏅 Top Clients (by receipts this period)</div>
+    <table class="tbl">
+      <thead><tr><th>Client</th><th class="num">Received</th></tr></thead>
+      <tbody>
+        {% for c in m.top_clients %}
+        <tr><td>{{ c.name }}</td><td class="num cr">{{ c.total|inr }}</td></tr>
+        {% else %}<tr><td colspan="2" class="muted">No receipts in this period.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ── Receivable (follow up) ── #}
+  <div>
+    <div class="section">🔴 To Follow Up — Receivable ({{ m.receivable_total|inr }})</div>
+    <table class="tbl">
+      <thead><tr><th>Client</th><th class="num">Owes You</th><th></th></tr></thead>
+      <tbody>
+        {% for r in m.receivable %}
+        <tr><td>{{ r.name }}</td><td class="num dr">{{ r.balance|inr }}</td>
+          <td><a class="btn sm" href="/clients/{{ r.client_id }}">Ledger</a></td></tr>
+        {% else %}<tr><td colspan="3" class="muted">No pending receivables. 👍</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ── Excess held ── #}
+{% if m.excess %}
+<div class="section">🟢 Excess Held (to adjust / refund) — {{ m.excess_total|inr }}</div>
+<table class="tbl">
+  <thead><tr><th>Client</th><th class="num">We Hold</th><th></th></tr></thead>
+  <tbody>
+    {% for e in m.excess %}
+    <tr><td>{{ e.name }}</td><td class="num cr">{{ e.balance|inr }}</td>
+      <td><a class="btn sm" href="/clients/{{ e.client_id }}">Ledger</a>
+          <a class="btn sm ghost" href="/payments">Refund</a></td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% endblock %}

@@ -13,7 +13,7 @@ document.addEventListener("keydown", function (e) {
   if (typing) return;
 
   const routes = {
-    F1: "/", F2: "/clients", F5: "/payments", F6: "/receipts",
+    F1: "/", F2: "/clients", F4: "/mis", F5: "/payments", F6: "/receipts",
     F7: "/journal", F8: "/daybook", F9: "/ledgers", F12: "/reports",
   };
   if (routes[e.key]) {
@@ -122,3 +122,60 @@ async function balanceRow(btn) {
     } catch (e) {}
   }
 }
+
+// ── Floating Calculator ──────────────────────────────────────────────
+(function () {
+  const panel = document.getElementById("calcPanel");
+  const toggle = document.getElementById("calcToggle");
+  const disp = document.getElementById("calcDisplay");
+  if (!panel || !toggle || !disp) return;
+  let expr = "";
+
+  function render() { disp.value = expr === "" ? "0" : expr; }
+  function press(k) {
+    if (k === "C") expr = "";
+    else if (k === "back") expr = expr.slice(0, -1);
+    else if (k === "=") {
+      try {
+        const safe = expr.replace(/[^0-9.+\-*/()%]/g, "").replace(/%/g, "/100");
+        if (safe) { expr = String(Function('"use strict";return (' + safe + ')')()); }
+      } catch (e) { expr = "Error"; }
+    } else expr += k;
+    render();
+  }
+
+  toggle.addEventListener("click", () => {
+    panel.style.display = panel.style.display === "block" ? "none" : "block";
+  });
+  document.getElementById("calcClose").addEventListener("click", () => panel.style.display = "none");
+  panel.querySelectorAll(".ck").forEach((b) =>
+    b.addEventListener("click", () => press(b.dataset.k)));
+
+  // Alt+C toggles, keyboard input when panel open
+  document.addEventListener("keydown", (e) => {
+    if (e.altKey && e.key.toLowerCase() === "c") {
+      e.preventDefault();
+      panel.style.display = panel.style.display === "block" ? "none" : "block";
+      return;
+    }
+    if (panel.style.display !== "block") return;
+    if ("0123456789+-*/.%".includes(e.key)) { press(e.key); }
+    else if (e.key === "Enter") { e.preventDefault(); press("="); }
+    else if (e.key === "Backspace") { press("back"); }
+    else if (e.key === "Escape") { panel.style.display = "none"; }
+  });
+
+  // Draggable by header
+  const head = document.getElementById("calcHead");
+  let drag = false, ox = 0, oy = 0;
+  head.addEventListener("mousedown", (e) => {
+    drag = true; ox = e.clientX - panel.offsetLeft; oy = e.clientY - panel.offsetTop;
+    panel.style.bottom = "auto"; panel.style.right = "auto";
+  });
+  document.addEventListener("mousemove", (e) => {
+    if (!drag) return;
+    panel.style.left = (e.clientX - ox) + "px";
+    panel.style.top = (e.clientY - oy) + "px";
+  });
+  document.addEventListener("mouseup", () => drag = false);
+})();

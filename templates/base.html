@@ -21,6 +21,7 @@
     <a href="/clients"   class="{{ 'active' if request.path.startswith('/clients') }}">👥 Clients <small>(F2)</small></a>
     <a href="/ledgers"   class="{{ 'active' if request.path.startswith('/ledgers') }}">📒 Ledgers <small>(F9)</small></a>
     <div class="grp">Display / Reports</div>
+    <a href="/mis"       class="{{ 'active' if request.path.startswith('/mis') }}">📋 MIS Report <small>(F4)</small></a>
     <a href="/daybook"   class="{{ 'active' if request.path.startswith('/daybook') }}">📅 Day Book <small>(F8)</small></a>
     <a href="/reports"   class="{{ 'active' if request.path.startswith('/reports') }}">📈 Reports <small>(F12)</small></a>
     <div class="grp">Admin</div>
@@ -43,6 +44,34 @@
       {% block content %}{% endblock %}
     </div>
   </main>
+</div>
+
+<!-- Floating Calculator -->
+<button id="calcToggle" class="calc-toggle" title="Calculator (Alt+C)">🧮</button>
+<div id="calcPanel" class="calc-panel">
+  <div class="calc-head" id="calcHead"><span>🧮 Calculator</span><span id="calcClose">✕</span></div>
+  <input id="calcDisplay" class="calc-display" readonly value="0">
+  <div class="calc-grid">
+    <button class="ck fn" data-k="C">C</button>
+    <button class="ck fn" data-k="back">←</button>
+    <button class="ck fn" data-k="%">%</button>
+    <button class="ck op" data-k="/">÷</button>
+    <button class="ck" data-k="7">7</button>
+    <button class="ck" data-k="8">8</button>
+    <button class="ck" data-k="9">9</button>
+    <button class="ck op" data-k="*">×</button>
+    <button class="ck" data-k="4">4</button>
+    <button class="ck" data-k="5">5</button>
+    <button class="ck" data-k="6">6</button>
+    <button class="ck op" data-k="-">−</button>
+    <button class="ck" data-k="1">1</button>
+    <button class="ck" data-k="2">2</button>
+    <button class="ck" data-k="3">3</button>
+    <button class="ck op" data-k="+">+</button>
+    <button class="ck" data-k="0">0</button>
+    <button class="ck" data-k=".">.</button>
+    <button class="ck eq" data-k="=" style="grid-column:span 2">=</button>
+  </div>
 </div>
 
 <div class="fkeybar">

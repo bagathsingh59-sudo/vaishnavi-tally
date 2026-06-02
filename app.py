@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, date
 
-from flask import (Flask, render_template, request, redirect, url_for, flash, jsonify)
+from flask import (Flask, render_template, request, redirect, url_for, flash, jsonify, Response)
 
 from database import ensure_indexes
 from utils.formatting import fmt_currency, fmt_date, fmt_date_input, fmt_month, voucher_type_label
@@ -504,6 +504,28 @@ def reports():
     return render_template("reports.html", **ctx)
 
 
+@app.route("/mis")
+def mis():
+    from datetime import timedelta
+    today = date.today()
+    period = request.args.get("period", "week")
+    if period == "month":
+        frm = today.replace(day=1)
+    elif period == "fy":
+        frm = date(today.year if today.month >= 4 else today.year - 1, 4, 1)
+    elif period == "custom":
+        frm = _parse_date(request.args.get("from")).date()
+        today = _parse_date(request.args.get("to")).date()
+    else:  # week
+        period = "week"
+        frm = today - timedelta(days=6)
+    data = report_svc.get_mis_report(
+        datetime.combine(frm, datetime.min.time()),
+        datetime.combine(today, datetime.max.time()))
+    return render_template("mis.html", m=data, period=period,
+                           from_s=frm.strftime("%Y-%m-%d"), to_s=today.strftime("%Y-%m-%d"))
+
+
 @app.route("/reports/se/<rid>/status", methods=["POST"])
 def update_se_status(rid):
     f = request.form
@@ -518,6 +540,22 @@ def update_se_status(rid):
 @app.route("/settings")
 def settings():
     return render_template("settings.html", counts=admin_svc.count_all())
+
+
+@app.route("/settings/backup")
+def backup():
+    payload = admin_svc.export_backup_json()
+    fname = f"vaishnavi_backup_{datetime.now().strftime('%Y%m%d_%H%M')}.json"
+    return Response(payload, mimetype="application/json",
+                    headers={"Content-Disposition": f"attachment; filename={fname}"})
+
+
+@app.route("/settings/export-ca")
+def export_ca():
+    data = admin_svc.export_ca_zip()
+    fname = f"vaishnavi_audit_{datetime.now().strftime('%Y%m%d')}.zip"
+    return Response(data, mimetype="application/zip",
+                    headers={"Content-Disposition": f"attachment; filename={fname}"})
 
 
 @app.route("/settings/starter-setup", methods=["POST"])

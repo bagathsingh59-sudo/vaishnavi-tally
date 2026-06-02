@@ -162,6 +162,92 @@ def get_dashboard_stats() -> dict:
     }
 
 
+def get_mis_report(from_date: datetime, to_date: datetime) -> dict:
+    """Management snapshot for a period: cash movement, earnings, who to
+    follow up, compliance dues, and recommended focus actions."""
+    db = get_db()
+    from services.ledger_service import get_ledger_balance
+
+    # Cash in / out during the period
+    def _sum(vtype, side):
+        agg = list(db.vouchers.aggregate([
+            {"$match": {"voucher_type": vtype, "date": {"$gte": from_date, "$lte": to_date}}},
+            {"$unwind": "$entries"},
+            {"$match": {f"entries.{side}": {"$gt": 0}}},
+            {"$group": {"_id": None, "total": {"$sum": f"$entries.{side}"}}},
+        ]))
+        return agg[0]["total"] if agg else 0.0
+
+    receipts = _sum("receipt", "debit")
+    payments = _sum("payment", "credit")
+
+    # Earnings during the period
+    pl = get_profit_loss(from_date, to_date)
+
+    # Top clients by receipts in the period
+    names = {str(c["_id"]): c["name"] for c in db.clients.find({}, {"name": 1})}
+    top_agg = list(db.vouchers.aggregate([
+        {"$match": {"voucher_type": "receipt", "date": {"$gte": from_date, "$lte": to_date}}},
+        {"$unwind": "$entries"},
+        {"$match": {"entries.debit": {"$gt": 0}}},
+        {"$group": {"_id": "$client_id", "total": {"$sum": "$entries.debit"}}},
+        {"$sort": {"total": -1}},
+        {"$limit": 5},
+    ]))
+    top_clients = [{"name": names.get(str(t["_id"]), "—"), "total": t["total"]} for t in top_agg]
+
+    # Current client positions (live)
+    balances = get_client_balances()
+    receivable = [b for b in balances if b["typ"] == "short"]
+    excess = [b for b in balances if b["typ"] == "excess"]
+    receivable_total = sum(b["balance"] for b in receivable)
+    excess_total = sum(b["balance"] for b in excess)
+
+    # Statutory dues pending (EPF/ESIC not yet remitted)
+    govt_pending = 0.0
+    for l in db.ledgers.find({"group": {"$in": ["epf_payable", "esic_payable"]},
+                              "is_active": True}):
+        bal = get_ledger_balance(str(l["_id"]))
+        if bal < 0:
+            govt_pending += -bal
+
+    # Voucher activity counts in the period
+    vcount = {}
+    for row in db.vouchers.aggregate([
+        {"$match": {"date": {"$gte": from_date, "$lte": to_date}}},
+        {"$group": {"_id": "$voucher_type", "count": {"$sum": 1}}},
+    ]):
+        vcount[row["_id"]] = row["count"]
+
+    # Recommended focus / action items
+    actions = []
+    if receivable_total > 0:
+        actions.append(("🔴", f"Follow up {len(receivable)} client(s) — "
+                              f"₹{receivable_total:,.0f} receivable."))
+    if govt_pending > 0:
+        actions.append(("🏛️", f"Remit ₹{govt_pending:,.0f} EPF/ESIC to government (pending)."))
+    if excess_total > 0:
+        actions.append(("🟢", f"₹{excess_total:,.0f} excess held for {len(excess)} client(s) "
+                              f"— adjust next bill or refund."))
+    if payments > receipts:
+        actions.append(("💹", f"Cash outflow exceeded inflow by ₹{payments-receipts:,.0f} "
+                              f"this period (timing of statutory payments)."))
+    if not actions:
+        actions.append(("✅", "All clear — no pending receivables or statutory dues."))
+
+    return {
+        "receipts": receipts, "payments": payments, "net_cash": receipts - payments,
+        "total_income": pl["total_income"], "net_profit": pl["net_profit"],
+        "income_items": pl["income"], "expense_items": pl["expenses"],
+        "top_clients": top_clients,
+        "receivable": receivable, "excess": excess,
+        "receivable_total": receivable_total, "excess_total": excess_total,
+        "govt_pending": govt_pending,
+        "vcount": vcount,
+        "actions": actions,
+    }
+
+
 def get_trial_balance(as_of_date: datetime = None) -> list:
     db = get_db()
     ledgers = list(db.ledgers.find({"is_active": True}).sort("group", 1))
