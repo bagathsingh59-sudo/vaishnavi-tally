@@ -24,6 +24,8 @@
     <a href="/mis"       class="{{ 'active' if request.path.startswith('/mis') }}">📋 MIS Report <small>(F4)</small></a>
     <a href="/daybook"   class="{{ 'active' if request.path.startswith('/daybook') }}">📅 Day Book <small>(F8)</small></a>
     <a href="/reports"   class="{{ 'active' if request.path.startswith('/reports') }}">📈 Reports <small>(F12)</small></a>
+    <div class="grp">Bank Reconciliation</div>
+    <a href="/reconcile" class="{{ 'active' if request.path.startswith('/reconcile') }}">🏦 Bank Reco <small>(separate)</small></a>
     <div class="grp">Admin</div>
     <a href="/settings"  class="{{ 'active' if request.path.startswith('/settings') }}">⚙️ Settings</a>
   </nav>
@@ -31,7 +33,9 @@
   <main class="main">
     <div class="titlebar">
       <span>💼 {{ FIRM_NAME|upper }} {% block heading %}{% endblock %}</span>
-      <span class="sub">📅 {{ TODAY.strftime('%d-%b-%Y') }} &nbsp;|&nbsp; FY: {{ FY_LABEL }}</span>
+      <span class="sub">
+        <a href="#" onclick="window.print();return false" style="color:#cfe0f2">🖨 Print</a>
+        &nbsp;|&nbsp; 📅 {{ TODAY.strftime('%d-%b-%Y') }} &nbsp;|&nbsp; FY: {{ FY_LABEL }}</span>
     </div>
 
     {% with msgs = get_flashed_messages(with_categories=true) %}

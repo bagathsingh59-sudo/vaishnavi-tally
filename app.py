@@ -11,6 +11,7 @@ from services import ledger_service as ledger_svc
 from services import voucher_service as voucher_svc
 from services import report_service as report_svc
 from services import admin_service as admin_svc
+from services import reco_service as reco_svc
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "vaishnavi-tally-dev-key-change-me")
@@ -107,6 +108,32 @@ def clients_add():
         "opening_balance_type": f.get("opening_balance_type", "dr"),
     })
     flash(f"Client '{f['name']}' added.", "success")
+    return redirect(url_for("clients"))
+
+
+@app.route("/clients/template")
+def clients_template():
+    csv_data = ("Name,Contact Person,Phone,EPF No,ESIC No,Opening Balance,Dr/Cr\n"
+                "ABC Industries,Ramesh Kumar,9876543210,MH/BAN/0012345,31000123456,0,Dr\n"
+                "XYZ Traders,Suresh Rao,9123456780,MH/PUN/0067890,31000678901,5000,Cr\n")
+    return Response(csv_data, mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=clients_template.csv"})
+
+
+@app.route("/clients/bulk", methods=["POST"])
+def clients_bulk():
+    f = request.files.get("csvfile")
+    if not f or not f.filename:
+        flash("Please choose a CSV file.", "error")
+        return redirect(url_for("clients"))
+    try:
+        res = clients_svc.bulk_create_clients(f.read())
+        msg = f"Created {res['created']} client(s)."
+        if res["skipped"]:
+            msg += f" Skipped {len(res['skipped'])} already-existing: {', '.join(res['skipped'][:10])}"
+        flash(msg, "success")
+    except Exception as e:
+        flash(f"Upload error: {e}", "error")
     return redirect(url_for("clients"))
 
 
@@ -502,6 +529,62 @@ def reports():
         ctx["grand"] = sum(a["total"] for a in ctx["agewise"])
 
     return render_template("reports.html", **ctx)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BANK RECONCILIATION  (separate from the books — compare only, never posts)
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.route("/reconcile")
+def reconcile_view():
+    banks = ledger_svc.get_bank_ledgers() + ledger_svc.get_cash_ledgers()
+    sel_id = request.args.get("bank") or (banks[0]["id"] if banks else None)
+    today = date.today()
+    from_s = request.args.get("from") or today.replace(day=1).strftime("%Y-%m-%d")
+    to_s = request.args.get("to") or today.strftime("%Y-%m-%d")
+    data = None
+    if sel_id:
+        data = reco_svc.reconcile(
+            sel_id, _parse_date(from_s),
+            datetime.combine(_parse_date(to_s).date(), datetime.max.time()))
+    return render_template("reconcile.html", banks=banks, sel_id=sel_id,
+                           data=data, from_s=from_s, to_s=to_s)
+
+
+@app.route("/reconcile/upload", methods=["POST"])
+def reconcile_upload():
+    bank = request.form["bank_ledger_id"]
+    f = request.files.get("statement")
+    if not f or not f.filename:
+        flash("Please choose a bank-statement CSV file.", "error")
+        return redirect(url_for("reconcile_view", bank=bank))
+    try:
+        lines = reco_svc.parse_statement(f.read())
+        n = reco_svc.save_statement(bank, lines)
+        if n:
+            flash(f"Uploaded {n} statement lines. (This is only for cross-checking — "
+                  f"your books are untouched.)", "success")
+        else:
+            flash("No transaction rows detected. Check the CSV has Date + Deposit/Withdrawal columns.", "error")
+    except Exception as e:
+        flash(f"Could not read the file: {e}", "error")
+    return redirect(url_for("reconcile_view", bank=bank))
+
+
+@app.route("/reconcile/clear", methods=["POST"])
+def reconcile_clear():
+    bank = request.form["bank_ledger_id"]
+    reco_svc.clear_statement(bank)
+    flash("Uploaded statement cleared.", "success")
+    return redirect(url_for("reconcile_view", bank=bank))
+
+
+@app.route("/reconcile/template")
+def reconcile_template():
+    csv_data = ("Date,Description,Withdrawal,Deposit,Balance\n"
+                "01-06-2026,NEFT CR XYZ COMPANY,,150000,150000\n"
+                "01-06-2026,NEFT DR EPF,135000,,15000\n")
+    return Response(csv_data, mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=bank_statement_template.csv"})
 
 
 @app.route("/mis")

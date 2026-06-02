@@ -44,6 +44,51 @@ def create_client(data: dict) -> str:
     return str(cid)
 
 
+def bulk_create_clients(file_bytes: bytes) -> dict:
+    """Create many clients from an uploaded CSV. Skips names that already exist."""
+    import csv, io
+    db = get_db()
+    text = file_bytes.decode("utf-8", errors="ignore")
+    reader = csv.DictReader(io.StringIO(text))
+    existing = {c["name"].strip().lower() for c in db.clients.find({}, {"name": 1})}
+    created, skipped = 0, []
+
+    def g(row, *keys):
+        for k in keys:
+            for actual in row:
+                if actual and actual.strip().lower() == k.lower():
+                    return (row[actual] or "").strip()
+        return ""
+
+    for row in reader:
+        name = g(row, "Name", "Client Name", "client")
+        if not name:
+            continue
+        if name.lower() in existing:
+            skipped.append(name)
+            continue
+        ob_raw = g(row, "Opening Balance", "Opening", "OB").replace(",", "")
+        try:
+            ob = float(ob_raw) if ob_raw else 0.0
+        except ValueError:
+            ob = 0.0
+        obt = (g(row, "Dr/Cr", "Type", "OB Type") or "dr").lower()
+        create_client({
+            "name": name,
+            "contact_person": g(row, "Contact Person", "Contact"),
+            "phone": g(row, "Phone", "Mobile"),
+            "email": g(row, "Email"),
+            "address": g(row, "Address"),
+            "epf_account_no": g(row, "EPF No", "EPF", "EPF Account No"),
+            "esic_account_no": g(row, "ESIC No", "ESIC", "ESIC Account No"),
+            "opening_balance": ob,
+            "opening_balance_type": "cr" if obt.startswith("cr") else "dr",
+        })
+        existing.add(name.lower())
+        created += 1
+    return {"created": created, "skipped": skipped}
+
+
 def get_all_clients(active_only: bool = True) -> list:
     db = get_db()
     query = {"is_active": True} if active_only else {}

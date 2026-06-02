@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block heading %}— BANK RECONCILIATION{% endblock %}
+{% block content %}
+
+<div class="panel" style="border-top-color:#b58100">
+  <b>ℹ️ This area is completely separate from your books.</b> Uploading a bank statement here
+  <b>does not create or change any entry</b> in your Tally. It only <b>compares</b> the bank
+  statement against your recorded entries so you can cross-check at month-end.
+</div>
+
+{# ── Bank + period selector ── #}
+<form method="get" action="/reconcile" class="panel">
+  <div class="form-row" style="align-items:flex-end">
+    <div class="field"><label>Bank / Cash Ledger</label>
+      <select name="bank" onchange="this.form.submit()">
+        {% for b in banks %}<option value="{{ b.id }}" {{ 'selected' if b.id==sel_id }}>{{ b.name }}</option>{% endfor %}
+      </select></div>
+    <div class="field" style="max-width:160px"><label>From</label><input type="date" name="from" value="{{ from_s }}"></div>
+    <div class="field" style="max-width:160px"><label>To</label><input type="date" name="to" value="{{ to_s }}"></div>
+    <div class="field" style="max-width:120px"><label>&nbsp;</label><button class="btn primary" type="submit">Show</button></div>
+  </div>
+</form>
+
+{# ── Upload statement ── #}
+<div class="section">📥 Upload Bank Statement (CSV)</div>
+<div class="panel">
+  <p>Download your statement from net-banking as <b>CSV</b>, then upload it. Works with common
+     bank formats (SBI / HDFC / ICICI / Axis). Uploading replaces any earlier statement for this bank.</p>
+  <a class="btn ghost" href="/reconcile/template">⬇️ Sample Format</a>
+  <form class="inline-form" method="post" action="/reconcile/upload" enctype="multipart/form-data" style="margin-left:10px">
+    <input type="hidden" name="bank_ledger_id" value="{{ sel_id }}">
+    <input type="file" name="statement" accept=".csv" required>
+    <button class="btn primary" type="submit">📤 Upload</button>
+  </form>
+  <form class="inline-form" method="post" action="/reconcile/clear" style="margin-left:6px"
+        onsubmit="return confirm('Clear the uploaded statement for this bank?')">
+    <input type="hidden" name="bank_ledger_id" value="{{ sel_id }}">
+    <button class="btn sm danger" type="submit">Clear Statement</button>
+  </form>
+</div>
+
+{% if data %}
+{# ── Summary ── #}
+<div class="section">⚖️ Reconciliation Summary</div>
+<div class="cards">
+  <div class="card"><div class="lbl">Bank Statement — Deposits</div><div class="val cr">{{ data.summary.stmt_deposits|inr }}</div></div>
+  <div class="card"><div class="lbl">Your Books — Money In</div><div class="val cr">{{ data.summary.tally_in|inr }}</div></div>
+  <div class="card"><div class="lbl">Bank Statement — Withdrawals</div><div class="val dr">{{ data.summary.stmt_withdrawals|inr }}</div></div>
+  <div class="card"><div class="lbl">Your Books — Money Out</div><div class="val dr">{{ data.summary.tally_out|inr }}</div></div>
+</div>
+<div class="cards" style="margin-top:10px">
+  <div class="card" style="border-top-color:{{ '#d33' if data.summary.stmt_unmatched else '#1e8e3e' }}">
+    <div class="lbl">⚠️ Statement lines NOT in your books</div>
+    <div class="val">{{ data.summary.stmt_unmatched }}</div>
+    <div class="sub">may need to be entered</div></div>
+  <div class="card" style="border-top-color:{{ '#d33' if data.summary.tally_unmatched else '#1e8e3e' }}">
+    <div class="lbl">⚠️ Book entries NOT in statement</div>
+    <div class="val">{{ data.summary.tally_unmatched }}</div>
+    <div class="sub">not yet in bank / check</div></div>
+  <div class="card"><div class="lbl">Your Book Closing Balance</div>
+    <div class="val">{{ data.summary.tally_closing|abs|inr }} {{ 'Dr' if data.summary.tally_closing>=0 else 'Cr' }}</div></div>
+</div>
+
+<div class="grid2">
+  {# ── Statement side ── #}
+  <div>
+    <div class="section">🏦 Bank Statement (uploaded)</div>
+    <table class="tbl">
+      <thead><tr><th>Date</th><th>Description</th><th class="num">In</th><th class="num">Out</th><th>✓</th></tr></thead>
+      <tbody>
+        {% for s in data.statement %}
+        <tr {{ 'style=background:#fff3cd' if not s.matched }}>
+          <td>{{ s.date|date }}</td><td>{{ s.description[:32] }}</td>
+          <td class="num cr">{{ s.deposit|inr if s.deposit else '' }}</td>
+          <td class="num dr">{{ s.withdrawal|inr if s.withdrawal else '' }}</td>
+          <td>{{ '✅' if s.matched else '❌' }}</td></tr>
+        {% else %}<tr><td colspan="5" class="muted">No statement uploaded for this period.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ── Books side ── #}
+  <div>
+    <div class="section">📒 Your Books (this bank ledger)</div>
+    <table class="tbl">
+      <thead><tr><th>Date</th><th>Voucher</th><th class="num">In</th><th class="num">Out</th><th>✓</th></tr></thead>
+      <tbody>
+        {% for t in data.tally %}
+        <tr {{ 'style=background:#fff3cd' if not t.matched }}>
+          <td>{{ t.date|date }}</td><td>{{ t.voucher_no }}</td>
+          <td class="num cr">{{ t.debit|inr if t.debit else '' }}</td>
+          <td class="num dr">{{ t.credit|inr if t.credit else '' }}</td>
+          <td>{{ '✅' if t.matched else '❌' }}</td></tr>
+        {% else %}<tr><td colspan="5" class="muted">No book entries for this period.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<p class="muted" style="font-size:12.5px">✅ = matched on both sides &nbsp;|&nbsp;
+   ❌ (yellow) = unmatched — investigate. A statement line with ❌ usually means you forgot to
+   enter it in Tally; a book entry with ❌ means it hasn't appeared in the bank yet (or a typo).</p>
+{% endif %}
+
+{% endblock %}

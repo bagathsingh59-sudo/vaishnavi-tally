@@ -178,6 +178,24 @@ input:focus,select:focus,textarea:focus{outline:none; border-color:var(--accent)
 .action-list li{background:#fff; border:1px solid var(--line); border-left:4px solid var(--accent);
   border-radius:8px; padding:12px 16px; margin-bottom:8px; font-size:13.5px;}
 
+/* ── Print: show only the content, hide all chrome ── */
+@media print {
+  .sidebar, .fkeybar, .calc-toggle, .calc-panel,
+  .tabs, form, .btn, .action-list .btn { display:none !important; }
+  .app { display:block; }
+  .main { padding:0; }
+  .titlebar { background:#fff !important; color:#000 !important; border-bottom:2px solid #000;
+              box-shadow:none; }
+  .titlebar .sub a { display:none; }
+  .section { color:#000; border-bottom:1px solid #000; }
+  table.tbl { border:1px solid #000; }
+  table.tbl th { background:#eee !important; color:#000 !important;
+                 -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .card { border:1px solid #999; box-shadow:none; }
+  a { color:#000 !important; text-decoration:none; }
+  canvas { max-height:260px; }
+}
+
 /* ── Misc ── */
 .muted{color:var(--muted);}
 .right{text-align:right;}
