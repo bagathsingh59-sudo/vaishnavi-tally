@@ -428,9 +428,24 @@ def ledgers():
 
 @app.route("/api/ledger/<lid>/balance")
 def api_ledger_balance(lid):
-    """Live current balance for a ledger (used by Journal/Payment/Receipt forms)."""
+    """Live current balance for a ledger (used by Journal/Payment forms)."""
     try:
         bal = ledger_svc.get_ledger_balance(lid)
+        return jsonify({
+            "balance": abs(bal),
+            "type": "Dr" if bal >= 0 else "Cr",
+            "formatted": fmt_currency(abs(bal)) + (" Dr" if bal >= 0 else " Cr"),
+        })
+    except Exception:
+        return jsonify({"balance": 0, "type": "Dr", "formatted": "—"})
+
+
+@app.route("/api/client/<cid>/balance")
+def api_client_balance(cid):
+    """Live balance for a CLIENT (resolves to the client's ledger). Used by the
+    Receipt 'Party' dropdown — its value is a client id, not a ledger id."""
+    try:
+        bal = clients_svc.get_client_outstanding(cid)
         return jsonify({
             "balance": abs(bal),
             "type": "Dr" if bal >= 0 else "Cr",

@@ -27,15 +27,17 @@ async function loadBal(sel) {
   const hint = sel.parentElement.querySelector(".balhint");
   if (!hint) return;
   if (!sel.value) { hint.textContent = ""; return; }
+  // .balc => value is a CLIENT id; .bal => value is a LEDGER id
+  const base = sel.classList.contains("balc") ? "/api/client/" : "/api/ledger/";
   try {
-    const r = await fetch("/api/ledger/" + sel.value + "/balance");
+    const r = await fetch(base + sel.value + "/balance");
     const d = await r.json();
     hint.textContent = "Cur Bal: " + d.formatted;
     hint.style.color = d.type === "Dr" ? "#d33" : "#1e8e3e";
   } catch (e) { hint.textContent = ""; }
 }
 function attachBalances() {
-  document.querySelectorAll("select.bal").forEach((sel) => {
+  document.querySelectorAll("select.bal, select.balc").forEach((sel) => {
     if (sel.dataset.wired) return;
     sel.dataset.wired = "1";
     sel.addEventListener("change", () => loadBal(sel));

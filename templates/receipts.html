@@ -16,7 +16,7 @@
   </div>
   <div class="form-row">
     <div class="field"><label>Party (Client) *</label>
-      <select name="client_id" class="bal" required>
+      <select name="client_id" class="balc" required>
         {% for c in clients %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
       </select><small class="balhint"></small></div>
     <div class="field"><label>Amount (₹) *</label><input type="number" step="0.01" name="amount" required></div>
