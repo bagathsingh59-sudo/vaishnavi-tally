@@ -2,13 +2,19 @@
 {% block heading %}— CLIENT LEDGER{% endblock %}
 {% block content %}
 
+{# short (Dr) = red, excess (Cr) = green, settled = black #}
+{% set bal_color = '#d33' if outstanding > 0.01 else ('#1e8e3e' if outstanding < -0.01 else '#000') %}
+{% set bal_status = 'SHORT (Receivable)' if outstanding > 0.01 else ('EXCESS (we hold)' if outstanding < -0.01 else 'SETTLED') %}
+
 <div class="cards">
   <div class="card"><div class="lbl">{{ c.name }}</div>
     <div class="sub">{{ c.contact_person }} | {{ c.phone }}</div>
     <div class="sub">EPF: {{ c.epf_account_no }} | ESIC: {{ c.esic_account_no }}</div></div>
-  <div class="card"><div class="lbl">Outstanding Balance</div>
-    <div class="val">{{ outstanding|abs|inr }}</div>
-    <div class="sub">{{ 'Dr (Receivable)' if outstanding>=0 else 'Cr (Excess held)' }}</div></div>
+  <div class="card" style="border-top-color:{{ bal_color }}">
+    <div class="lbl">Outstanding Balance</div>
+    <div class="val" style="color:{{ bal_color }}">{{ outstanding|abs|inr }}
+      {{ 'Dr' if outstanding>=0 else 'Cr' }}</div>
+    <div class="sub" style="color:{{ bal_color }};font-weight:600">{{ bal_status }}</div></div>
 </div>
 
 <details>
@@ -40,8 +46,8 @@
       <td class="num">{{ t.credit|inr if t.credit else '' }}</td>
       <td class="num">{{ t.balance|inr }} {{ t.balance_type }}</td></tr>
   {% else %}<tr><td colspan="7" class="muted">No transactions.</td></tr>{% endfor %}
-    <tr class="totalrow"><td colspan="6">Closing Balance</td>
-      <td class="num">{{ closing|abs|inr }} {{ 'Dr' if closing>=0 else 'Cr' }}</td></tr>
+    <tr class="totalrow"><td colspan="6">Closing Balance <span style="color:{{ bal_color }}">({{ bal_status }})</span></td>
+      <td class="num" style="color:{{ bal_color }}">{{ closing|abs|inr }} {{ 'Dr' if closing>=0 else 'Cr' }}</td></tr>
   </tbody>
 </table>
 
